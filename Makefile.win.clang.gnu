@@ -54,6 +54,14 @@ OBJDEP = defines.h less.h
 
 #### End of system configuration section. ####
 
+# Set SHELL to `cmd` for Windows OS (note: ${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
+# * `make` may otherwise use an incorrect shell (eg, `bash`), if found; "syntax error: unexpected end of file" error output is indicative
+ifeq (${OS},Windows_NT)
+SHELL := cmd
+endif
+
+####
+
 # This rule allows us to supply the necessary -D options
 # in addition to whatever the user asks for.
 .c.${O}:

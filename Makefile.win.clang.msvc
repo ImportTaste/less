@@ -5,11 +5,6 @@
 
 #### Start of system configuration section. ####
 
-# `clang` requires MSVC 2015+
-ifneq (,$(shell if defined VCvars_CL_VER if "%VCvars_CL_VER%" LSS "1500" echo INCOMPATIBLE_MSVC))
-$(error Incompatible MSVC environment setup encountered)
-endif
-
 # !! WIP: get the target correct
 # `clang` depends on a host linker (for windows => MSVC `link` or MinGW `gcc`)
 # target of clang must correspond to linker libraries used
@@ -69,6 +64,21 @@ DEFINETYPE = wn
 OBJDEP = defines.h less.h funcs.h cmd.h
 
 #### End of system configuration section. ####
+
+# Set SHELL to `cmd` for Windows OS (note: ${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
+# * `make` may otherwise use an incorrect shell (eg, `bash`), if found; "syntax error: unexpected end of file" error output is indicative
+ifeq (${OS},Windows_NT)
+SHELL := cmd
+endif
+
+####
+
+# `clang` requires MSVC 2015+
+ifneq (,$(shell if defined VCvars_CL_VER if "%VCvars_CL_VER%" LSS "1500" echo INCOMPATIBLE_MSVC))
+$(error Incompatible MSVC environment setup encountered)
+endif
+
+####
 
 # This rule allows us to supply the necessary -D options
 # in addition to whatever the user asks for.
