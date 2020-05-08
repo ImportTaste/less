@@ -5,8 +5,8 @@
 
 # spell-checker:ignore (acronyms/names) Borland Borland's MSVC MinGW POSIX VCvars
 # spell-checker:ignore (cmd) COMSPEC SystemDrive SystemRoot findstr windir
-# spell-checker:ignore (flags/options) DDEBUG DNDEBUG NDEBUG Werror Wextra Xclang defaultlib flto flto-visibility-public-std libcmt nologo nothrow
-# spell-checker:ignore (make) CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJDEP distclean firstword ifeq ifndef ifneq realclean undefine vclean veryclean
+# spell-checker:ignore (flags/options) DDEBUG DNDEBUG NDEBUG Werror Wextra Xclang defaultlib flto flto-visibility-public-std libcmt nologo nothrow dumpmachine
+# spell-checker:ignore (make) CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJDEP SHELLSTATUS distclean firstword ifeq ifndef ifneq realclean undefine vclean veryclean
 # spell-checker:ignore (utils) ilink nmake
 # spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl stdext ttyin
 
@@ -14,6 +14,7 @@
 
 CC = gcc
 ## -g :: produce debugging information
+## -v :: verbose output (shows commands to run)
 ## -O<n> :: <n> == [0 .. 3], increasing level of optimization (see <https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html> @@ <https://archive.vn/7YtdI>)
 ## -pedantic-errors :: error on use of compiler language extensions
 ## -Werror :: warnings treated as errors
@@ -32,18 +33,33 @@ EXEEXT = .exe
 O = o
 
 CP = copy
+STRIP = strip
 
 DEFINETYPE = wn
 OBJDEP = defines.h less.h
 
 DEBUG ?= 0
-ifeq ($(DEBUG),1)
-	CFLAGS += -DDEBUG -O0 -g
-else
+ifeq ($(DEBUG),0)
 	CFLAGS += -DNDEBUG -O3
+else
+	CFLAGS += -DDEBUG -O0 -g
 endif
 
 #### End of system configuration section. ####
+
+# require at least `make` v4.2+ (minimum needed for correct path functions and .SHELLSTATUS)
+MAKE_VERSION_major := $(word 1,$(subst ., ,$(MAKE_VERSION)))
+MAKE_VERSION_minor := $(word 2,$(subst ., ,$(MAKE_VERSION)))
+MAKE_VERSION_fail := $(filter $(MAKE_VERSION_major),3 2 1 0)
+ifeq (${MAKE_VERSION_major},4)
+MAKE_VERSION_fail := $(filter $(MAKE_VERSION_minor),1 0)
+endif
+ifneq ($(MAKE_VERSION_fail),)
+$(info MAKE_VERSION=${MAKE_VERSION})
+# $(info MAKE_VERSION_major=${MAKE_VERSION_major})
+# $(info MAKE_VERSION_minor=${MAKE_VERSION_minor})
+$(error ERR!: `make` v4.2+ required)
+endif
 
 # Set SHELL to `cmd` for Windows OS (note: environment/${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
 # * `make` may otherwise use an incorrect shell (eg, `bash`), if found; "syntax error: unexpected end of file" error output is indicative
@@ -52,7 +68,77 @@ ifeq (${OS},Windows_NT)
 	COMSPEC := $(or ${ComSpec},${COMSPEC},${comspec})
 	SystemRoot := $(or ${SystemRoot},${SYSTEMROOT},${systemroot},${windir})
 	SHELL := $(firstword $(wildcard ${COMSPEC} ${SystemRoot}/System32/cmd.exe) cmd)
-	$(info SHELL=${SHELL})
+endif
+# $(info SHELL=${SHELL})
+
+devnull := /dev/null
+NULL :=
+SPACE := $() $()
+DQUOTE := \"
+BQUOTE := $(firstword \` \`)
+ifeq ($(OS),Windows_NT)
+devnull := NUL
+DQUOTE := $(subst \,,$(DQUOTE))
+BQUOTE := $(subst \,,$(BQUOTE))
+endif
+
+mkfile_path := $(lastword ${MAKEFILE_LIST})
+mkfile_abs_path := $(abspath ${mkfile_path})
+mkfile_dir := $(abspath $(dir ${mkfile_abs_path}))
+ifeq (${OS},Windows_NT)
+current_dir := $(abspath $(shell cmd /x/d/c echo %CD%))
+else
+current_dir := $(abspath $(shell echo $$PWD))
+endif
+
+# $(info mkfile_path="$(mkfile_path)")
+# $(info mkfile_abs_path="$(mkfile_abs_path)")
+# $(info mkfile_dir="$(mkfile_dir)")
+# $(info current_dir="$(current_dir)")
+
+ifeq (${SPACE},$(findstring ${SPACE},${mkfile_abs_path}))
+$(error WARN: <space>'s within project directory may cause issues)
+endif
+
+OUT_DIR_EXT=
+ifneq (${TARGET},)
+CFLAGS += --target=$(TARGET)
+OUT_DIR_EXT =.$(TARGET)
+else
+ifneq (${ARCH},$(filter ${ARCH},32 i686 x32 x86 64 x64 x86_64))
+$(error ERR!: Unknown architecture "$(ARCH)"; valid values are ["", "32", "i686", "x32", "x86", "64", "x64", "x86_64"])
+endif
+ifeq (${OS},Windows_NT)
+ifeq (${ARCH},)
+CC_machine := $(shell ${CC} -dumpmachine)
+override ARCH := $(or $(filter $(subst -, ,${CC_machine}),i686 x86_64),i686)
+endif
+# $(info ARCH="${ARCH}")
+endif
+ifneq (,$(filter ${ARCH},32 i686 x32 x86))
+ARCH_norm := 32
+# TARGET := i686-unknown-windows-gnu
+endif
+ifneq (,$(filter ${ARCH},64 x64 x86_64))
+ARCH_norm := 64
+# TARGET := x86_64-unknown-windows-gnu
+endif
+CFLAGS += -m${ARCH_norm}
+# LDFLAGS += -m${ARCH_norm}
+OUT_DIR_EXT =.x${ARCH_norm}
+endif # defined ${TARGET}
+
+# $(info CC=$(CC))
+# $(info CFLAGS=$(CFLAGS))
+# FixME: revise to leave directory clean of intermediate files and remove need for extra "test" file (t.c)
+ARCH_available := $(shell ${CC} ${CFLAGS} t.c -o t.exe 2>&1)
+# $(info ARCH=$(ARCH))
+# $(info ARCH_norm=$(ARCH_norm))
+# $(info TARGET=$(TARGET))
+# $(info .SHELLSTATUS=$(.SHELLSTATUS))
+# $(info ARCH_available=$(ARCH_available))
+ifneq (${.SHELLSTATUS},0)
+$(error ERR!: Architecture "${ARCH}" is unavailable/unimplemented for this version of `${CC}`)
 endif
 
 ####
@@ -60,7 +146,7 @@ endif
 # This rule allows us to supply the necessary -D options
 # in addition to whatever the user asks for.
 .c.${O}:
-	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} $<
+	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<"
 
 OBJ = \
 	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
@@ -73,10 +159,16 @@ OBJ = \
 all: less${EXEEXT} lesskey${EXEEXT}
 
 less${EXEEXT}: ${OBJ}
-	${CC} ${CPPFLAGS} ${CFLAGS} ${OBJ} -o $@ ${LDFLAGS} ${LIBS}
+	${CC} ${CPPFLAGS} ${CFLAGS} ${OBJ} -o "$@" ${LDFLAGS} ${LIBS}
+ifeq (${DEBUG},0)
+	${STRIP} "$@"
+endif
 
 lesskey${EXEEXT}: lesskey.${O} version.${O}
-	${CC} ${CPPFLAGS} ${CFLAGS} lesskey.${O} version.${O} -o $@ ${LDFLAGS} ${LIBS}
+	${CC} ${CPPFLAGS} ${CFLAGS} lesskey.${O} version.${O} -o "$@" ${LDFLAGS} ${LIBS}
+ifeq (${DEBUG},0)
+	${STRIP} "$@"
+endif
 
 ${OBJ}: ${OBJDEP}
 

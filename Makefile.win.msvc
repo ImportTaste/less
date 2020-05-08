@@ -72,8 +72,8 @@ ifeq (${OS},Windows_NT)
 	COMSPEC := $(or ${ComSpec},${COMSPEC},${comspec})
 	SystemRoot := $(or ${SystemRoot},${SYSTEMROOT},${systemroot},${windir})
 	SHELL := $(firstword $(wildcard ${COMSPEC} ${SystemRoot}/System32/cmd.exe) cmd)
-	$(info SHELL=${SHELL})
 endif
+# $(info SHELL=${SHELL})
 
 ####
 
