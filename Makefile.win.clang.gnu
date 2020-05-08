@@ -12,7 +12,7 @@
 # spell-checker:ignore (flags/options) DDEBUG DNDEBUG NDEBUG Werror Wextra Xclang defaultlib dumpmachine flto flto-visibility-public-std libcmt nologo nothrow
 # spell-checker:ignore (jargon) multilib
 # spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring windir
-# spell-checker:ignore (utils) ilink nmake
+# spell-checker:ignore (utils) ilink nmake printf
 # spell-checker:ignore (vars) BQUOTE CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE DQUOTE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJDEP SHELLSTATUS devnull mkfile
 # spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl stdext ttyin
 
