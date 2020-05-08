@@ -134,8 +134,9 @@ endif # defined ${TARGET}
 
 # $(info CC=$(CC))
 # $(info CFLAGS=$(CFLAGS))
-# FixME: revise to leave directory clean of intermediate files and remove need for extra "test" file (t.c)
-ARCH_available := $(shell ${CC} ${CFLAGS} t.c -o t.exe 2>&1)
+# FixME: revise to leave directory clean of intermediate files and remove need for extra "test" file; move to 'intermediate' file directory
+test_file_stem = $(subst ${SPACE},_,_MAKE_${CC}_${TARGET}_test_)
+ARCH_available := $(shell echo \#include ^<stdio.h^> > ${test_file_stem}.c && echo int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} ${CFLAGS} ${test_file_stem}.c -o ${test_file_stem})
 # $(info ARCH=$(ARCH))
 # $(info ARCH_norm=$(ARCH_norm))
 # $(info TARGET=$(TARGET))
