@@ -4,18 +4,29 @@
 
 # `make -f Makefile.win.msvc`
 
-NAME=less
+# NOTE: * requires `make` version 4.0+ (minimum needed for correct path functions)
+# NOTE: `make` doesn't handle spaces within file names without gyrations (see <https://stackoverflow.com/questions/9838384/can-gnu-make-handle-filenames-with-spaces>@@<https://archive.is/PYKKq>)
 
-# spell-checker:ignore (targets) distclean realclean vclean veryclean
-# spell-checker:ignore (make) abspath firstword ifeq ifndef ifneq lastword undefine vclean veryclean
+NAME = less
+
+# NOTE: NAME default == parent directory name (if not set)
+
+####
+
+# spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl ttyin
+
+# spell-checker:ignore (targets) realclean vclean veryclean
+# spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef findstring firstword ifeq ifneq lastword notdir undefine
 #
-# spell-checker:ignore (acronyms/names) Borland Borland's LLVM MSVC MinGW POSIX VCvars
-# spell-checker:ignore (flags/options) DDEBUG DNDEBUG NDEBUG Werror Wextra Xclang defaultlib dumpmachine flto flto-visibility-public-std libcmt nologo nothrow
-# spell-checker:ignore (jargon) multilib
-# spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring windir
-# spell-checker:ignore (utils) ilink nmake
-# spell-checker:ignore (vars) BQUOTE CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE DQUOTE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJ_deps devnull
-# spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl stdext ttyin
+# spell-checker:ignore (MSVC flags) defaultlib nologo
+# spell-checker:ignore (abbrev/acronyms) LLVM MSVC MinGW POSIX VCvars
+# spell-checker:ignore (flags/options) DDEBUG DNDEBUG NDEBUG Werror Wextra Xclang dumpmachine flto flto-visibility-public-std nologo nothrow
+# spell-checker:ignore (libraries) libcmt lstdc stdext
+# spell-checker:ignore (jargon) deps delims executables multilib
+# spell-checker:ignore (shell/nix) mkdir printf rmdir uname
+# spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring mkdir windir
+# spell-checker:ignore (utils) goawk
+# spell-checker:ignore (vars) BQUOTE CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE DQUOTE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJ_deps OSID devnull falsey
 
 #### Start of system configuration section. ####
 
@@ -41,7 +52,7 @@ CFLAGS_COMPILE_ONLY = /c
 ## /D "NDEBUG" :: deactivate assert()
 ## /D "_CRT_SECURE_NO_WARNING" :: compiler directive == suppress "unsafe function" compiler warning
 CFLAGS = /nologo /W3 /WX /MT /EHsc /Ox /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_CRT_SECURE_NO_WARNINGS"
-LDFLAGS = /nologo /subsystem:console /incremental:no /machine:I386
+LDFLAGS = /nologo## /subsystem:console /incremental:no /machine:I386
 # VC6-specific flags
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
 LDFLAGS_VC6 = /ignore:4254
@@ -54,25 +65,20 @@ LDFLAGS_VC6 = /ignore:4254
 #CFLAGS = /nologo /W3 /MTd /EHsc /Od /Gm /Zi /I "." /D "WIN32" /D "DEBUG" /D "_CONSOLE" /c
 #LDFLAGS = /nologo /subsystem:console /incremental:yes /debug /machine:I386 ${LDFLAGS_VC6}
 
-LD = link
 LIBS = user32.lib
-
-EXEEXT = .exe
-O = obj
-
-CP = copy
 
 DEFINETYPE = wn
 OBJ_deps = defines.h less.h funcs.h cmd.h
 
+COLOR ?= $(if $(or ${MAKE_TERMOUT},${MAKE_TERMERR}),true,false)
+DEBUG ?= false
+STATIC ?= true
+VERBOSE ?= false
+MAKEFLAGS_debug ?= $(if $(findstring d,${MAKEFLAGS}),true,false)## NOTE: use `-d` or `MAKEFLAGS_debug=1`, `--debug[=FLAGS]` does not set MAKEFLAGS correctly (see <https://savannah.gnu.org/bugs/?func=detailitem&item_id=58341>)
+
 #### End of system configuration section. ####
 
-BUILD_DIR ?= \#build
-ifeq (${DEBUG},0)
-CONFIG	  ?= release
-else
-CONFIG	  ?= debug
-endif
+OSID := $(or $(filter win,${OS:Windows_NT=win}),nix)## OSID = [nix,win]
 
 # require at least `make` v4.0 (minimum needed for correct path functions)
 MAKE_VERSION_major := $(word 1,$(subst ., ,$(MAKE_VERSION)))
@@ -82,39 +88,57 @@ ifeq (${MAKE_VERSION_major},4)
 MAKE_VERSION_fail := $(filter $(MAKE_VERSION_minor),)
 endif
 ifneq ($(MAKE_VERSION_fail),)
-$(info MAKE_VERSION=${MAKE_VERSION})
-# $(info MAKE_VERSION_major=${MAKE_VERSION_major})
-# $(info MAKE_VERSION_minor=${MAKE_VERSION_minor})
-$(error ERR!: `make` v4.0+ required)
+$(call _info,MAKE_VERSION=${MAKE_VERSION})
+# $(call _info,MAKE_VERSION_major=${MAKE_VERSION_major})
+# $(call _info,MAKE_VERSION_minor=${MAKE_VERSION_minor})
+$(call _error,`make` v4.0+ required)
 endif
 
 # for Windows OS, set SHELL to `%ComSpec%` or `cmd` (note: environment/${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
 # * `make` may otherwise use an incorrect shell (eg, `bash`), if found; "syntax error: unexpected end of file" error output is indicative
-ifeq (${OS},Windows_NT)
+ifeq (${OSID},win)
 # use case and location fallbacks; note: assumes *no spaces* within ${ComSpec}, ${SystemRoot}, or ${windir}
 COMSPEC := $(or ${ComSpec},${COMSPEC},${comspec})
 SystemRoot := $(or ${SystemRoot},${SYSTEMROOT},${systemroot},${windir})
 SHELL := $(firstword $(wildcard ${COMSPEC} ${SystemRoot}/System32/cmd.exe) cmd)
 endif
-# $(info SHELL=${SHELL})
+$(call _debug,SHELL=${SHELL})
 
-devnull = NUL
+ESCAPE := ## ANSI escape character
+color_black = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;30m,)
+color_blue = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;34m,)
+color_cyan = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;36m,)
+color_green = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;32m,)
+color_magenta = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;35m,)
+color_red = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;31m,)
+color_yellow = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;33m,)
+color_white = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;37m,)
+color_reset = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0m,)
+#
+color_success = ${color_green}
+color_debug = ${color_cyan}
+color_info = ${color_blue}
+color_warning = ${color_yellow}
+color_error = ${color_red}
 
-####
-
-# detect $(CC)
-CC_version_check_flags := -v
-ifeq (${CC},cl)
-CC_version_check_flags :=
-endif
-ifeq (,$(shell "$(CC)" ${CC_version_check_flags} >${devnull} 2>&1 && echo $(CC) present))
-$(error ERR!: Missing required compiler (`$(CC)`))
-endif
-
-# Since we rely on paths relative to the makefile location, abort if make isn't being run from there.
-ifneq ($(makefile_dir),$(current_dir))
-$(error ERR!: Invalid current directory; this makefile must be invoked from the directory it resides in)
-endif
+define _error
+$(error ${color_error}ERR!:${color_reset} ${1})
+endef
+define _debug
+$(if $(filter-out ${falsey},${MAKEFLAGS_debug}),$(info ${color_debug}debug:${color_reset} ${1}),)
+endef
+define _info
+$(info ${color_info}info:${color_reset} ${1})
+endef
+define _success
+$(info $(call _success_text,${1}))
+endef
+define _success_text
+${color_success}SUCCESS:${color_reset} ${1}
+endef
+define _warning
+$(warning ${color_warning}WARN:${color_reset} ${1})
+endef
 
 ####
 
@@ -122,29 +146,208 @@ ifeq (${NAME},)
 override NAME = $(notdir $(abspath $(dir $(abspath $(lastword ${MAKEFILE_LIST})))))
 endif
 
-NULL :=
-SPACE := $() $()
-DQUOTE := \"
-BQUOTE := $(firstword \` \`)
-ifeq ($(OS),Windows_NT)
-DQUOTE := $(subst \,,$(DQUOTE))
-BQUOTE := $(subst \,,$(BQUOTE))
+falsey := 0 f false off n no
+override COLOR := $(or $(if $(filter-out ${falsey},${COLOR}),true,false))
+override DEBUG := $(or $(if $(filter-out ${falsey},${DEBUG}),true,false))
+override STATIC := $(or $(if $(filter-out ${falsey},${STATIC}),true,false))
+override VERBOSE := $(or $(if $(filter-out ${falsey},${VERBOSE}),true,false))
+override MAKEFLAGS_debug := $(or $(if $(or $(filter-out ${falsey},${MAKEFLAGS_debug}),$(filter-out ${falsey},${MAKEFILE_debug})),true,false))
+
+$(call _debug,DEBUG=${DEBUG})
+$(call _debug,VERBOSE=${VERBOSE})
+
+CFLAGS += ${CFLAGS_DEBUG_${DEBUG}}
+CFLAGS += ${CFLAGS_VERBOSE_${VERBOSE}}
+LDFLAGS += ${LDFLAGS_STATIC_${STATIC}}
+LDFLAGS += ${LDFLAGS_${CC}}
+LDFLAGS += ${LDFLAGS_${CC}_${OSID}}
+
+$(call _debug,CFLAGS=${CFLAGS})
+$(call _debug,LDFLAGS=${LDFLAGS})
+
+####
+
+# NOTE: early configuration; must be done before ${CC} (`clang`) is used as a linker (eg, during configuration)
+ifeq (${OSID},win)
+ifeq (${CC},clang)
+# prior LIB definition may interfere with clang builds when using MSVC
+undefine LIB # no 'override' to allow definition on command line
+endif
 endif
 
 ####
 
+devnull := $(if $(filter win,${OSID}),NUL,/dev/null)
+, := ,
+COMMA := ,
+BQUOTE := `
+DQUOTE := "
+NULL :=
+SPACE := $() $()
+
+# detect ${CC}
+CC_check_flags := $(if $(filter cl,${CC}),,-v)
+ifeq (,$(shell "${CC}" ${CC_check_flags} >${devnull} 2>&1 && echo ${CC} present))
+$(call _error,Missing required compiler (`${CC}`))
+endif
+
+ifeq (${SPACE},$(findstring ${SPACE},${makefile_abs_path}))
+$(call _error,<SPACE>'s within project directory may cause issues)
+endif
+
+# Since we rely on paths relative to the makefile location, abort if make isn't being run from there.
+ifneq ($(makefile_dir),$(current_dir))
+$(call _error,Invalid current directory; this makefile must be invoked from the directory it resides in)
+endif
+
+####
+
+# DQUOTE := \"
+# BQUOTE := $(firstword \` \`)
+# ifeq ($(OS),Windows_NT)
+# DQUOTE := $(subst \,,${DQUOTE})
+# BQUOTE := $(subst \,,${BQUOTE})
+# endif
+
 makefile_path := $(lastword ${MAKEFILE_LIST})
 makefile_abs_path := $(abspath ${makefile_path})
 makefile_dir := $(abspath $(dir ${makefile_abs_path}))
-current_dir := ${CURDIR}
+# ifeq (${OS},Windows_NT)
+# current_dir := $(abspath $(shell "$(COMSPEC)" /x/d/c echo %CD%))## %CD% requires CMD extensions
+# else
+# current_dir := $(abspath $(shell echo $$PWD))
+# endif
+current_dir = ${CURDIR}
 
-# $(info MAKEFILE_LIST="${MAKEFILE_LIST}")
-# $(info makefile_path="$(makefile_path)")
-# $(info makefile_abs_path="$(makefile_abs_path)")
-# $(info makefile_dir="$(makefile_dir)")
-# $(info current_dir="$(current_dir)")
+$(call _debug,makefile_path="$(makefile_path)")
+$(call _debug,makefile_abs_path="$(makefile_abs_path)")
+$(call _debug,makefile_dir="$(makefile_dir)")
+$(call _debug,current_dir="$(current_dir)")
 
-OBJ_deps += ${makefile_abs_path}
+OUT_DIR_EXT := $(if $(filter-out ${falsey},${STATIC}),,.dynamic)
+
+ARCH_default := i686
+ARCH_i686 := i686 x86
+ARCH_x86_64 := x64 x86_64
+ARCH_allowed := $(sort 32 x32 ${ARCH_i686} 64 ${ARCH_x86_64})
+ifneq (${ARCH},$(filter ${ARCH},${ARCH_allowed}))
+$(call _error,Unknown architecture "$(ARCH)"; valid values are [""$(subst $(SPACE),$(),$(addprefix ${COMMA}${DQUOTE},$(addsuffix ${DQUOTE},${ARCH_allowed})))])
+endif
+
+ifneq (${TARGET},)
+CFLAGS += --target=$(TARGET)
+OUT_DIR_EXT := ${OUT_DIR_EXT}.$(TARGET)
+else
+CC_machine := $(shell ${CC} $(if $(filter cl,${CC}),,-dumpmachine) 2>&1)
+CC_ARCH := $(or $(filter $(subst -, ,${CC_machine}),${ARCH_i686} ${ARCH_x86_64}),${ARCH_default})
+CC_ARCH_ID := $(if $(filter ${CC_ARCH},32 x32 ${ARCH_i686}),32,64)
+override ARCH := $(or ${ARCH},${CC_ARCH})
+ARCH_ID := $(if $(filter ${ARCH},32 x32 ${ARCH_i686}),32,64)
+CFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
+# LDFLAGS += -m${ARCH_ID}
+OUT_DIR_EXT =.x${ARCH_ID}
+endif # defined ${TARGET}
+
+$(call _debug,ARCH="${ARCH}")
+$(call _debug,ARCH_ID="${ARCH_ID}")
+$(call _debug,CC_machine="${CC_machine}")
+$(call _debug,CC_ARCH="${CC_ARCH}")
+$(call _debug,CC_ARCH_ID="${CC_ARCH_ID}")
+$(call _debug,STATIC="${STATIC}")
+$(call _debug,TARGET="${TARGET}")
+
+$(call _debug,OUT_DIR_EXT="${OUT_DIR_EXT}")
+
+####
+
+OS_PREFIX=
+ifeq (${OSID},win)
+OSID_name  ?= windows
+OS_PREFIX  := win.
+CC_o 	   := $(or $(if $(filter cl,${CC}),/Fe:),-o${SPACE})
+EXEEXT 	   := .exe
+O          := $(if $(filter cl,${CC}),obj,o)
+#
+CP 		   := copy /y
+AWK		   := goawk
+ECHO 	   := echo
+GREP	   := grep
+MKDIR 	   := mkdir
+RM 		   := del
+RM_r 	   := $(RM) /s
+RMDIR	   := rmdir /s/q
+FIND	   := "${SystemRoot}\System32\find"
+FINDSTR    := "${SystemRoot}\System32\findstr"
+MORE	   := "${SystemRoot}\System32\more"
+SORT	   := "${SystemRoot}\System32\sort"
+STRIP      := $(or $(if $(filter clang,${CC}),llvm-strip),strip)
+#
+ECHO_DQ	   :=
+ECHO_SQ	   :=
+else
+OSID_name  ?= $(shell uname | tr '[:upper:]' '[:lower:]')
+OS_PREFIX  := ${OSID_name}.
+CC_o 	   := -o${SPACE}
+EXEEXT 	   :=
+O          := o
+#
+CP 		   := cp
+AWK		   := awk
+ECHO 	   := echo
+GREP	   := grep
+MKDIR 	   := mkdir -p
+RM 		   := rm
+RM_r 	   := ${RM} -r
+RMDIR 	   := ${RM} -r
+SORT	   := sort
+STRIP	   := strip
+#
+ECHO_DQ	   := "
+ECHO_SQ	   := '
+endif
+
+####
+
+BUILD_DIR ?= \#build
+CONFIG	  ?= $(if $(filter-out ${falsey},${DEBUG}),debug,release)
+
+SRC_DIR = .
+OUT_DIR = ${BUILD_DIR}/$(OS_PREFIX)$(CONFIG).${CC}$(OUT_DIR_EXT)
+BIN_DIR = ${OUT_DIR}/bin
+OBJ_DIR = ${OUT_DIR}/obj
+
+SRC_files := $(wildcard ${SRC_DIR}/*.c ${SRC_DIR}/*.cpp ${SRC_DIR}/*.cxx)
+# SRC_files := $(addprefix ",$(addsuffix ",$(SRC_files)))
+OBJ_files := $(SRC_files)
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
+
+$(call _debug,SRC_DIR='${SRC_DIR}')
+$(call _debug,SRC_files='$(SRC_files)')
+$(call _debug,OBJ_files='$(OBJ_files)')
+
+####
+
+# work within ${CURDIR} (build directories may not yet be created)
+test_file_stem = $(subst ${SPACE},_,__MAKE__${CC}_${ARCH}_${TARGET}_test__)
+test_file_cc_string = ${CC_o}${test_file_stem}${EXEEXT}
+ifeq (${OSID},win)
+ifneq (${CC},cl)
+ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
+endif
+ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
+else
+ARCH_available := $(shell ${ECHO} '\#include <stdio.h>' > ${test_file_stem}.c && ${ECHO} 'int main(void){printf("${test_file_stem}");return 0;}' >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} && ${ECHO} true; ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
+endif
+$(call _debug,.SHELLSTATUS=${.SHELLSTATUS})
+$(call _debug,ARCH_available="${ARCH_available}")
+
+ifneq (,$(or $(filter-out ${ARCH_available},true), $(and $(filter cl,${CC}), $(filter-out ${ARCH_ID},${CC_ARCH_ID}))))
+$(call _error,$(if ${TARGET},Architecture/Target "${ARCH}/${TARGET}",Architecture "${ARCH}") is unavailable/unimplemented for this version of `${CC}`)
+endif
+
+####
 
 ifeq (${makefile_path},Makefile)
 make_help_alias ?= make
@@ -152,69 +355,48 @@ else
 make_help_alias ?= make -f "${makefile_path}"
 endif
 
-ifeq (${SPACE},$(findstring ${SPACE},${mkfile_abs_path}))
-$(info WARN: <SPACE>'s within project directory may cause issues)
-endif
+####
 
-OUT_DIR_EXT=
-ifneq (${TARGET},)
-CFLAGS += --target=$(TARGET)
-OUT_DIR_EXT =.$(TARGET)
+PROJECT_TARGET = ${BIN_DIR}/${NAME}${EXEEXT}
+${PROJECT_TARGET}: # *default* target (see recipe/rule below)
+
+####
+
+.PHONY: help
+help: ## Display help
+	@${ECHO} usage: ${BQUOTE}${make_help_alias} [ARCH=..] [COLOR=..] [DEBUG=..] [STATIC=..] [TARGET=..] [VERBOSE=..] [MAKE_TARGET...]${BQUOTE}
+	@${ECHO} builds ${BQUOTE}${PROJECT_TARGET}${BQUOTE} within ${DQUOTE}$(current_dir)${DQUOTE}
+	@${ECHO} ${ECHO_SQ}${color_info}MAKE_TARGETs:${color_reset}${ECHO_SQ}
+ifeq (${OSID},win)
+	@${FINDSTR} "^[a-zA-Z-]*:.*##" "${makefile_path}" | ${SORT} | for /f "tokens=1-2,* delims=:#" %%g in ('${MORE}') do @(@call set "t=%%g                " & @call echo ${color_success}%%t:~0,15%%${color_reset} ${color_info}%%i${color_reset} )
 else
-ifneq (${ARCH},$(filter ${ARCH},32 i686 x32 x86 64 x64 x86_64))
-$(error ERR!: Unknown architecture "$(ARCH)"; valid values are ["", "32", "i686", "x32", "x86", "64", "x64", "x86_64"])
+	@${GREP} -P "(?i)^[[:alpha:]-]+:" "${makefile_path}" | ${SORT} | ${AWK} 'match($$0,"^([[:alpha:]]+):.*?##\\s*(.*)$$",m){ printf "${color_success}%-10s${color_reset}\t${color_info}%s${color_reset}\n", m[1], m[2] }'
 endif
-ifeq (${OS},Windows_NT)
-ifeq (${ARCH},)
-CC_machine := $(shell ${CC})
-override ARCH := $(or $(filter $(subst -, ,${CC_machine}),i686 x86_64),i686)
-endif
-# $(info ARCH="${ARCH}")
-endif
-ifneq (,$(filter ${ARCH},32 i686 x32 x86))
-ARCH_norm := 32
-# TARGET := i686-unknown-windows-gnu
-endif
-ifneq (,$(filter ${ARCH},64 x64 x86_64))
-ARCH_norm := 64
-# TARGET := x86_64-unknown-windows-gnu
-endif
-# CFLAGS += -m${ARCH_norm}
-# LDFLAGS += -m${ARCH_norm}
-OUT_DIR_EXT =.x${ARCH_norm}
-endif # defined ${TARGET}
+
+.PHONY: run
+run: ${PROJECT_TARGET} ## Build/execute project executable
+	@"$^"
 
 ####
 
-OS_PREFIX  = win.
-CP 		   = copy /y
-AWK		   = goawk
-ECHO 	   = echo
-GREP	   = grep
-MKDIR 	   = mkdir
-RM 		   = del
-RM_r 	   = $(RM) /s
-RMDIR	   = rmdir /s/q
-FIND	   = "$(SystemRoot)\System32\find"
-FINDSTR    = "$(SystemRoot)\System32\findstr"
-MORE	   = "$(SystemRoot)\System32\more"
-SORT	   = "$(SystemRoot)\System32\sort"
+.PHONY: clean
+clean: ## Remove build artifacts (including intermediate files)
+	@if EXIST "*.${O}" ${RM} "*.${O}" && echo "*.${O}" file^(s^) removed
+	@if EXIST "defines.h" ${RM} "defines.h" && echo "defines.h" removed
+	@if EXIST "${PROJECT_TARGET}" ${RM} "${PROJECT_TARGET}" && echo "${PROJECT_TARGET}" removed
+	@for %%G in (${AUX_EXES}) do if EXIST "%%G" ${RM} "%%G" && echo "%%G" removed
 
 ####
 
-# $(info CC=$(CC))
-# $(info CFLAGS=$(CFLAGS))
-# FixME: revise to leave directory clean of intermediate files and remove need for extra "test" file; move to 'intermediate' file directory
-test_file_stem = $(subst ${SPACE},_,_MAKE_${CC}_${TARGET}_test_)
-ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} ${CFLAGS} ${test_file_stem}.c >${devnull} && ${ECHO} true&& ${RM} ${test_file_stem}.*)
-# $(info ARCH=$(ARCH))
-# $(info ARCH_norm=$(ARCH_norm))
-# $(info TARGET=$(TARGET))
-# $(info .SHELLSTATUS=$(.SHELLSTATUS))
-# $(info ARCH_available=$(ARCH_available))
-ifneq (${ARCH_available},true)
-$(error ERR!: Architecture "${ARCH}" is unavailable/unimplemented for this version of `${CC}`)
-endif
+.PHONY: all build build-aux compile realclean rebuild vclean veryclean
+all: build build-aux ## Build all project executables
+build: ${PROJECT_TARGET} ## Build project
+build-aux: ${AUX_EXES} ## Build auxillary executables (`lessecho` and `lesskey`)
+compile: ${OBJ_files} ## Build intermediate files
+realclean: clean
+rebuild: clean build ## Clean and rebuild project
+vclean: realclean
+veryclean: realclean
 
 ####
 
@@ -228,42 +410,19 @@ endif
 
 ####
 
-SRC_DIR = .
-OUT_DIR = $(BUILD_DIR)/$(OS_PREFIX)$(CONFIG).$(CC)$(OUT_DIR_EXT)
-BIN_DIR = $(OUT_DIR)/bin
-OBJ_DIR = $(OUT_DIR)/obj
+OBJ_files := \
+	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
+	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
+	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
+	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
+	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
+	tags.${O} ttyin.${O} version.${O} regexp.${O}
 
-SRC_files := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cxx)
-OBJ_files := $(SRC_files)
-OBJ_files := $(OBJ_files:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.$(O))
-OBJ_files := $(OBJ_files:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.$(O))
-OBJ_files := $(OBJ_files:$(SRC_DIR)/%.cxx=$(OBJ_DIR)/%.$(O))
-
-$(info SRC_files=${SRC_files})
-$(info OBJ_files=${OBJ_files})
-
-# OBJ_files := \
-# 	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
-# 	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
-# 	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
-# 	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
-# 	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
-# 	tags.${O} ttyin.${O} version.${O} regexp.${O}
-
-# $(info OBJ_files=${OBJ_files})
+$(call _debug,OBJ_files=${OBJ_files})
 
 ####
-
-PROJECT_TARGET = ${BIN_DIR}/${NAME}${EXEEXT}
-${PROJECT_TARGET}: ## *default* target (see recipe/rule below)
 
 AUX_EXES = lessecho${EXEEXT} lesskey${EXEEXT}
-
-####
-
-${PROJECT_TARGET}: ${OBJ_files} | ${BIN_DIR}
-	${LD} ${LDFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${LIBS} /out:"$@"
-	@${ECHO} SUCCESS: made "$@"
 
 ${AUX_EXES}: %${EXEEXT}: %.${O} version.${O} | ${BIN_DIR}
 	${LD} ${LDFLAGS} "$<" "version.${O}" ${LIBS} /out:"$@"
@@ -274,48 +433,29 @@ ${OBJ_files}: ${OBJ_deps} | ${OBJ_DIR}
 defines.h: defines.${DEFINETYPE}
 	${CP} defines.${DEFINETYPE} defines.h
 
-.PHONY: clean
-clean: ## Remove build artifacts (including intermediate files)
-	@if EXIST "*.${O}" ${RM} "*.${O}" && echo "*.${O}" file^(s^) removed
-	@if EXIST "defines.h" ${RM} "defines.h" && echo "defines.h" removed
-	@if EXIST "less${EXEEXT}" ${RM} "less${EXEEXT}" && echo "less${EXEEXT}" removed
-	@for %%G in (${AUX_EXES}) do if EXIST "%%G" ${RM} "%%G" && echo "%%G" removed
+####
 
-.PHONY: help
-help:
-	@echo usage: $(BQUOTE)$(make_help_alias) [ARCH=..] [MAKE_TARGET...]$(BQUOTE)
-	@echo * builds $(BQUOTE)$(PROJECT_TARGET)$(BQUOTE) within $(DQUOTE)$(current_dir)$(DQUOTE)
-	@echo MAKE_TARGETs:
-	@$(FINDSTR) "^[a-zA-Z-]*:.*##.*" "$(makefile_path)" | $(SORT) | for /f "tokens=1-2,* delims=:#" %%g in ('$(MORE)') do @(@call set "t=%%g                " & @call echo %%t:~0,15%% %%i )
+${PROJECT_TARGET}: ${OBJ_files} ${makefile_abs_path} | ${BIN_DIR}
+	${CC} ${CXXFLAGS} ${CFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${CC_o}"$@" ${LDFLAGS} ${LIBS}
+ifeq (,$(and ${STRIP},$(filter-out ${falsey},${DEBUG})))
+	${STRIP} "$@"
+endif
+	@${ECHO} ${ECHO_SQ}$(call _success_text,made "$@")${ECHO_SQ}
 
-.PHONY: run
-run: ${PROJECT_TARGET} ## Build/execute project executable
-	@"$<"
+${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.c ${makefile_abs_path} | ${OBJ_DIR}
+	${CC} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
 
-.PHONY: all build build-aux compile realclean rebuild vclean veryclean
-all: build build-aux ## Build all project executables
-build: ${PROJECT_TARGET} ## Build project
-build-aux: ${AUX_EXES} ## Build auxillary executables (`lessecho` and `lesskey`)
-compile: ${OBJ_files} ## Build intermediate files
-realclean: clean
-rebuild: clean build ## Clean and rebuild project
-vclean: realclean
-veryclean: realclean
+${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cpp ${makefile_abs_path} | ${OBJ_DIR}
+	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
 
-${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.c ${OBJ_deps} ${makefile_abs_path} | ${OBJ_DIR}
-	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<" /Fo"$@"
+${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cxx ${makefile_abs_path} | ${OBJ_DIR}
+	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
 
-${OBJ_DIR}/%.$(O): $(SRC_DIR)/%.cpp ${OBJ_deps} ${makefile_abs_path} | $(OBJ_DIR)
-	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CFLAGS} "$<" /Fo"$@"
+${BIN_DIR}:
+	${MKDIR} "${BIN_DIR}"
 
-$(OBJ_DIR)/%.$(O): $(SRC_DIR)/%.cxx ${OBJ_deps} ${makefile_abs_path} | $(OBJ_DIR)
-	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CFLAGS} "$<" /Fo"$@"
+${OBJ_DIR}:
+	${MKDIR} "${OBJ_DIR}"
 
-$(BIN_DIR):
-	$(MKDIR) "$(BIN_DIR)"
-
-$(OBJ_DIR):
-	$(MKDIR) "$(OBJ_DIR)"
-
-$(OUT_DIR):
-	$(MKDIR) "$(OUT_DIR)"
+${OUT_DIR}:
+	${MKDIR} "${OUT_DIR}"
