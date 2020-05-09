@@ -194,10 +194,16 @@ OBJ = \
 	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
 	tags.${O} ttyin.${O} version.${O} regexp.${O}
 
-all: less${EXEEXT} lesskey${EXEEXT}
+all: less${EXEEXT} lessecho${EXEEXT} lesskey${EXEEXT}
 
 less${EXEEXT}: ${OBJ}
 	${CC} ${CPPFLAGS} ${CFLAGS} ${OBJ} -o "$@" ${LDFLAGS} ${LIBS}
+ifeq (${DEBUG},0)
+	${STRIP} "$@"
+endif
+
+lessecho${EXEEXT}: lessecho.${O} version.${O}
+	${CC} ${CPPFLAGS} ${CFLAGS} "${OBJ}" -o "$@" ${LDFLAGS} ${LIBS}
 ifeq (${DEBUG},0)
 	${STRIP} "$@"
 endif

@@ -1,4 +1,4 @@
-# Makefile for less.
+# Makefile for `less`
 # Windows version; MinGW gcc compiler
 
 # `make -f Makefile.win.mingw`
@@ -17,6 +17,7 @@
 #### Start of system configuration section. ####
 
 CC = gcc
+CXX = ${CC:gcc=g}++
 ## -g :: produce debugging information
 ## -v :: verbose output (shows commands to run)
 ## -O<n> :: <n> == [0 .. 3], increasing level of optimization (see <https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html> @@ <https://archive.vn/7YtdI>)
@@ -78,10 +79,12 @@ endif
 devnull := /dev/null
 NULL :=
 SPACE := $() $()
+CMDSEP := ;
 DQUOTE := \"
 BQUOTE := $(firstword \` \`)
 ifeq ($(OS),Windows_NT)
 devnull := NUL
+CMDSEP := &
 DQUOTE := $(subst \,,$(DQUOTE))
 BQUOTE := $(subst \,,$(BQUOTE))
 endif
@@ -184,6 +187,7 @@ clean:
 	-if EXIST "*.${O}" del *.${O}
 	-if EXIST "defines.h" del defines.h
 	-if EXIST "less${EXEEXT}" del less${EXEEXT}
+	-if EXIST "lessecho${EXEEXT}" del lessecho${EXEEXT}
 	-if EXIST "lesskey${EXEEXT}" del lesskey${EXEEXT}
 
 build: all
