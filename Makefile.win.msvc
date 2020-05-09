@@ -228,37 +228,38 @@ endif
 
 ####
 
-PROJECT_TARGET = ${NAME}${EXEEXT}
-${PROJECT_TARGET}: ## *default* target (see recipe/rule below)
-
-####
-
-SRC_DIR = src
+SRC_DIR = .
 OUT_DIR = $(BUILD_DIR)/$(OS_PREFIX)$(CONFIG).$(CC)$(OUT_DIR_EXT)
 BIN_DIR = $(OUT_DIR)/bin
 OBJ_DIR = $(OUT_DIR)/obj
 
 SRC_files := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cxx)
-# SRC_files := $(addprefix ",$(addsuffix ",$(SRC_files)))
 OBJ_files := $(SRC_files)
 OBJ_files := $(OBJ_files:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.$(O))
 OBJ_files := $(OBJ_files:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.$(O))
 OBJ_files := $(OBJ_files:$(SRC_DIR)/%.cxx=$(OBJ_DIR)/%.$(O))
 
-OBJ_files := \
-	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
-	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
-	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
-	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
-	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
-	tags.${O} ttyin.${O} version.${O} regexp.${O}
+$(info SRC_files=${SRC_files})
+$(info OBJ_files=${OBJ_files})
+
+# OBJ_files := \
+# 	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
+# 	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
+# 	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
+# 	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
+# 	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
+# 	tags.${O} ttyin.${O} version.${O} regexp.${O}
+
+# $(info OBJ_files=${OBJ_files})
+
+####
+
+PROJECT_TARGET = ${BIN_DIR}/${NAME}${EXEEXT}
+${PROJECT_TARGET}: ## *default* target (see recipe/rule below)
 
 AUX_EXES = lessecho${EXEEXT} lesskey${EXEEXT}
 
 ####
-
-%.${O} : %.c ${OBJ_deps}
-	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<"
 
 ${PROJECT_TARGET}: ${OBJ_files} | ${BIN_DIR}
 	${LD} ${LDFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${LIBS} /out:"$@"
@@ -300,6 +301,15 @@ realclean: clean
 rebuild: clean build ## Clean and rebuild project
 vclean: realclean
 veryclean: realclean
+
+${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.c ${OBJ_deps} ${makefile_abs_path} | ${OBJ_DIR}
+	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<" /Fo"$@"
+
+${OBJ_DIR}/%.$(O): $(SRC_DIR)/%.cpp ${OBJ_deps} ${makefile_abs_path} | $(OBJ_DIR)
+	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CFLAGS} "$<" /Fo"$@"
+
+$(OBJ_DIR)/%.$(O): $(SRC_DIR)/%.cxx ${OBJ_deps} ${makefile_abs_path} | $(OBJ_DIR)
+	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CFLAGS} "$<" /Fo"$@"
 
 $(BIN_DIR):
 	$(MKDIR) "$(BIN_DIR)"
