@@ -7,7 +7,7 @@
 
 # `make -f Makefile.win.msvc`
 
-NAME = less ## empty/null => autoset to name of containing folder
+NAME := less ## empty/null => autoset to name of containing folder
 
 ####
 
@@ -28,14 +28,14 @@ NAME = less ## empty/null => autoset to name of containing folder
 
 #### Start of system configuration section. ####
 
-CC = cl
-CXX = cl
-LD = link
+CC := cl
+CXX := cl
+LD := link
 
 ## ref: [MSVC Compiler Options] https://msdn.microsoft.com/en-us/library/fwkeyyhe.aspx @@ https://archive.is/aOAtH
 
 ## /c :: compile only
-CFLAGS_COMPILE_ONLY = /c
+CFLAGS_COMPILE_ONLY := /c
 
 # Normal/usual flags
 ## /nologo :: startup without logo display
@@ -50,24 +50,24 @@ CFLAGS_COMPILE_ONLY = /c
 ## /D "_CONSOLE" :: old/extraneous define
 ## /D "NDEBUG" :: deactivate assert()
 ## /D "_CRT_SECURE_NO_WARNING" :: compiler directive == suppress "unsafe function" compiler warning
-CFLAGS = /nologo /W3 /WX /MT /EHsc /Ox /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_CRT_SECURE_NO_WARNINGS"
-LDFLAGS = /nologo /subsystem:console /incremental:no /machine:I386
+CFLAGS := /nologo /W3 /WX /MT /EHsc /Ox /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_CRT_SECURE_NO_WARNINGS"
+LDFLAGS := /nologo /subsystem:console /incremental:no /machine:I386
 # VC6-specific flags
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
-LDFLAGS_VC6_true = /ignore:4254
+LDFLAGS_VC6_true := /ignore:4254
 
 # DEBUG flags
 ## /MTd :: static linking to debug library
 ## /Od :: disable optimization
 ## /Gm :: enables minimal rebuild
 ## /Zi :: generates complete debugging information
-#CFLAGS = /nologo /W3 /MTd /EHsc /Od /Gm /Zi /I "." /D "WIN32" /D "DEBUG" /D "_CONSOLE" /c
-#LDFLAGS = /nologo /subsystem:console /incremental:yes /debug /machine:I386 ${LDFLAGS_VC6_true}
+#CFLAGS := /nologo /W3 /MTd /EHsc /Od /Gm /Zi /I "." /D "WIN32" /D "DEBUG" /D "_CONSOLE" /c
+#LDFLAGS := /nologo /subsystem:console /incremental:yes /debug /machine:I386 ${LDFLAGS_VC6_true}
 
-LIBS = user32.lib
+LIBS := user32.lib
 
-DEFINETYPE = wn
-OBJ_deps = defines.h less.h funcs.h cmd.h
+DEFINETYPE := wn
+OBJ_deps := defines.h less.h funcs.h cmd.h
 
 COLOR ?= $(if $(or ${MAKE_TERMOUT},${MAKE_TERMERR}),true,false)
 DEBUG ?= false
@@ -78,7 +78,7 @@ MAKEFLAGS_debug ?= $(if $(findstring d,${MAKEFLAGS}),true,false)## NOTE: use `-d
 #### End of system configuration section. ####
 
 falsey := false 0 f n no off
-OSID := $(or $(filter win,${OS:Windows_NT=win}),nix)## OSID = [nix,win]
+OSID := $(or $(filter win,${OS:Windows_NT=win}),nix)## OSID == [nix,win]
 
 %eq = $(and $(findstring $(1),$(2)),$(findstring $(2),$(1)))
 
@@ -124,21 +124,21 @@ $(call %debug_var,SHELL)
 ####
 
 ESCAPE := ## ANSI escape character
-color_black = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;30m,)
-color_blue = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;34m,)
-color_cyan = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;36m,)
-color_green = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;32m,)
-color_magenta = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;35m,)
-color_red = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;31m,)
-color_yellow = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;33m,)
-color_white = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;37m,)
-color_reset = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0m,)
+color_black := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;30m,)
+color_blue := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;34m,)
+color_cyan := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;36m,)
+color_green := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;32m,)
+color_magenta := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;35m,)
+color_red := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;31m,)
+color_yellow := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;33m,)
+color_white := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;37m,)
+color_reset := $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0m,)
 #
-color_success = ${color_green}
-color_debug = ${color_cyan}
-color_info = ${color_blue}
-color_warning = ${color_yellow}
-color_error = ${color_red}
+color_success := ${color_green}
+color_debug := ${color_cyan}
+color_info := ${color_blue}
+color_warning := ${color_yellow}
+color_error := ${color_red}
 
 %error = $(error ${color_error}ERR!:${color_reset} ${1})
 %debug = $(if $(filter-out ${falsey},${MAKEFLAGS_debug}),$(info ${color_debug}debug:${color_reset} ${1}),)
@@ -153,7 +153,7 @@ color_error = ${color_red}
 
 NAME := $(strip ${NAME})
 ifeq (${NAME},)
-override NAME = $(notdir ${makefile_dir})
+override NAME := $(notdir ${makefile_dir})
 endif
 
 override COLOR := $(or $(if $(filter-out ${falsey},${COLOR}),true,false))
@@ -245,9 +245,11 @@ CC_ARCH := $(or $(filter $(subst -, ,${CC_machine}),${ARCH_i686} ${ARCH_x86_64})
 CC_ARCH_ID := $(if $(filter ${CC_ARCH},32 x32 ${ARCH_i686}),32,64)
 override ARCH := $(or ${ARCH},${CC_ARCH})
 ARCH_ID := $(if $(filter ${ARCH},32 x32 ${ARCH_i686}),32,64)
+OUT_DIR_EXT =.x${ARCH_ID}
 CFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
 LDFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
-OUT_DIR_EXT =.x${ARCH_ID}
+CFLAGS := $(strip ${CFLAGS})
+LDFLAGS := $(strip ${LDFLAGS})
 endif # defined ${TARGET}
 
 $(call %debug_var,ARCH)
@@ -325,13 +327,13 @@ endif
 BUILD_DIR ?= \#build
 CONFIG	  ?= $(if $(filter-out ${falsey},${DEBUG}),debug,release)
 
-SRC_DIR = .
-# OUT_DIR = ${BUILD_DIR}/$(OS_PREFIX)$(CONFIG).${CC}$(OUT_DIR_EXT)
-# BIN_DIR = ${OUT_DIR}/bin
-# OBJ_DIR = ${OUT_DIR}/obj
-OUT_DIR = .
-BIN_DIR = .
-OBJ_DIR = .
+SRC_DIR := .
+# OUT_DIR := ${BUILD_DIR}/$(OS_PREFIX)$(CONFIG).${CC}$(OUT_DIR_EXT)
+# BIN_DIR := ${OUT_DIR}/bin
+# OBJ_DIR := ${OUT_DIR}/obj
+OUT_DIR := .
+BIN_DIR := .
+OBJ_DIR := .
 
 SRC_files := $(wildcard ${SRC_DIR}/*.c ${SRC_DIR}/*.cpp ${SRC_DIR}/*.cxx)
 # SRC_files := $(addprefix ",$(addsuffix ",$(SRC_files)))
@@ -347,8 +349,8 @@ $(call %debug_var,OBJ_files)
 ####
 
 # work within ${CURDIR} (build directories may not yet be created)
-test_file_stem = $(subst ${SPACE},_,__MAKE__${CC}_${ARCH}_${TARGET}_test__)
-test_file_cc_string = ${CC_o}${test_file_stem}${EXEEXT}
+test_file_stem := $(subst ${SPACE},_,__MAKE__${CC}_${ARCH}_${TARGET}_test__)
+test_file_cc_string := ${CC_o}${test_file_stem}${EXEEXT}
 ifeq (${OSID},win)
 ifneq (${CC},cl)
 ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} >${devnull} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
@@ -366,12 +368,12 @@ endif
 
 ####
 
-PROJECT_TARGET = ${BIN_DIR}/${NAME}${EXEEXT}
+PROJECT_TARGET := ${BIN_DIR}/${NAME}${EXEEXT}
 ${PROJECT_TARGET}: # *default* target (see recipe/rule below)
 
 ####
 
-AUX_EXES = ${BIN_DIR}/lessecho${EXEEXT} ${BIN_DIR}/lesskey${EXEEXT}
+AUX_EXES := ${BIN_DIR}/lessecho${EXEEXT} ${BIN_DIR}/lesskey${EXEEXT}
 
 OBJ_files := $(filter-out ${SRC_DIR}/lessecho.c ${SRC_DIR}/lesskey.c ${SRC_DIR}/scrsize.c,${SRC_files})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
@@ -390,7 +392,7 @@ $(call %debug_var,OBJ_files)
 
 ####
 
-is_VC6 = ${shell "${CC}" 2>&1 | ${FINDSTR} /i /c:"compiler version 12."}
+is_VC6 := ${shell "${CC}" 2>&1 | ${FINDSTR} /i /c:"compiler version 12."}
 
 # VC6-specific flags
 ifneq (,${is_VC6})
@@ -412,10 +414,9 @@ defines.h: defines.${DEFINETYPE}
 ####
 
 .PHONY: help
-make_help_alias ?= $(if $(call %eq,Makefile,${makefile_path}),Makefile,make -f "${makefile_path}")
 help: ## Display help
-	@${ECHO} ${BQUOTE}${make_help_alias}${BQUOTE}
-	@${ECHO} Usage: ${BQUOTE}${make_help_alias} [ARCH=..] [COLOR=..] [DEBUG=..] [STATIC=..] [TARGET=..] [VERBOSE=..] [MAKE_TARGET...]${BQUOTE}
+	@${ECHO} ${BQUOTE}${make_invoke_alias}${BQUOTE}
+	@${ECHO} Usage: ${BQUOTE}${make_invoke_alias} [ARCH=..] [COLOR=..] [DEBUG=..] [STATIC=..] [TARGET=..] [VERBOSE=..] [MAKE_TARGET...]${BQUOTE}
 	@${ECHO} Builds ${SQUOTE}${PROJECT_TARGET}${SQUOTE} within ${DQUOTE}$(current_dir)${DQUOTE}
 	@${ECHO_NL}
 	@${ECHO} MAKE_TARGETs:
@@ -453,6 +454,8 @@ veryclean: realclean
 
 ####
 
+# ref: [`make` default rules]<https://www.gnu.org/software/make/manual/html_node/Catalogue-of-Rules.html> @@ <https://archive.is/KDNbA>
+
 ${PROJECT_TARGET}: ${OBJ_files} ${makefile_abs_path} | ${BIN_DIR}
 	${LD} ${LDFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${LIBS} ${LD_o}"$@"
 ifeq (,$(and ${STRIP},$(filter-out ${falsey},${DEBUG})))
@@ -461,13 +464,14 @@ endif
 	@${ECHO} ${ECHO_SQ}$(call %success_text,made '$@'.)${ECHO_SQ}
 
 ${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.c ${makefile_abs_path} | ${OBJ_DIR}
-	${CC} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
+	${CC} ${CFLAGS_COMPILE_ONLY} ${CFLAGS} "$<" ${CC_o}"$@"
 
 ${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cpp ${makefile_abs_path} | ${OBJ_DIR}
-	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
+	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
 
 ${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cxx ${makefile_abs_path} | ${OBJ_DIR}
-	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
+	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
+#or	${CC} ${CFLAGS_COMPILE_ONLY} ${CFLAGS} "$<" ${CC_o}"$@"
 
 # ${BIN_DIR}:
 # 	${MKDIR} "${BIN_DIR}"
