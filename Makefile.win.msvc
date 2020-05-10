@@ -105,11 +105,11 @@ makefile_dir := $(abspath $(dir ${makefile_abs_path}))
 current_dir := ${CURDIR}
 make_invoke_alias ?= $(if $(call %eq,Makefile,${makefile_path}),Makefile,make -f "${makefile_path}")
 
-$(call %debug,makefile_path="$(makefile_path)")
-$(call %debug,makefile_abs_path="$(makefile_abs_path)")
-$(call %debug,makefile_dir="$(makefile_dir)")
-$(call %debug,current_dir="$(current_dir)")
-$(call %debug,current_dir="$(make_invoke_alias)")
+$(call %debug_var,makefile_path)
+$(call %debug_var,makefile_abs_path)
+$(call %debug_var,makefile_dir)
+$(call %debug_var,current_dir)
+$(call %debug_var,current_dir)
 
 # for Windows OS, set SHELL to `%ComSpec%` or `cmd` (note: environment/${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
 # * `make` may otherwise use an incorrect shell (eg, `bash`), if found; "syntax error: unexpected end of file" error output is indicative
@@ -119,7 +119,7 @@ COMSPEC := $(or ${ComSpec},${COMSPEC},${comspec})
 SystemRoot := $(or ${SystemRoot},${SYSTEMROOT},${systemroot},${windir})
 SHELL := $(firstword $(wildcard ${COMSPEC} ${SystemRoot}/System32/cmd.exe) cmd)
 endif
-$(call %debug,SHELL=${SHELL})
+$(call %debug_var,SHELL)
 
 ####
 
@@ -173,13 +173,18 @@ $(call %debug_var,CFLAGS)
 $(call %debug_var,CFLAGS_DEBUG_${DEBUG})
 
 CFLAGS += ${CFLAGS_DEBUG_${DEBUG}}
+CFLAGS += ${CFLAGS_DEBUG_${DEBUG}_STATIC_${STATIC}}
 CFLAGS += ${CFLAGS_VERBOSE_${VERBOSE}}
+CFLAGS := $(strip ${CFLAGS})
+
 LDFLAGS += ${LDFLAGS_STATIC_${STATIC}}
 LDFLAGS += ${LDFLAGS_${CC}}
 LDFLAGS += ${LDFLAGS_${CC}_${OSID}}
+LDFLAGS := $(strip ${LDFLAGS})
 
-$(call %debug,CFLAGS=${CFLAGS})
-$(call %debug,LDFLAGS=${LDFLAGS})
+$(call %debug_var,CFLAGS)
+$(call %debug_var,CXXFLAGS)
+$(call %debug_var,LDFLAGS)
 
 ####
 
@@ -236,10 +241,10 @@ makefile_dir := $(abspath $(dir ${makefile_abs_path}))
 # endif
 current_dir = ${CURDIR}
 
-$(call %debug,makefile_path="$(makefile_path)")
-$(call %debug,makefile_abs_path="$(makefile_abs_path)")
-$(call %debug,makefile_dir="$(makefile_dir)")
-$(call %debug,current_dir="$(current_dir)")
+$(call %debug_var,makefile_path)
+$(call %debug_var,makefile_abs_path)
+$(call %debug_var,makefile_dir)
+$(call %debug_var,current_dir)
 
 OUT_DIR_EXT := $(if $(filter-out ${falsey},${STATIC}),,.dynamic)
 
@@ -265,15 +270,15 @@ LDFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
 OUT_DIR_EXT =.x${ARCH_ID}
 endif # defined ${TARGET}
 
-$(call %debug,ARCH="${ARCH}")
-$(call %debug,ARCH_ID="${ARCH_ID}")
-$(call %debug,CC_machine="${CC_machine}")
-$(call %debug,CC_ARCH="${CC_ARCH}")
-$(call %debug,CC_ARCH_ID="${CC_ARCH_ID}")
-$(call %debug,STATIC="${STATIC}")
-$(call %debug,TARGET="${TARGET}")
+$(call %debug_var,ARCH)
+$(call %debug_var,ARCH_ID)
+$(call %debug_var,CC_machine)
+$(call %debug_var,CC_ARCH)
+$(call %debug_var,CC_ARCH_ID)
+$(call %debug_var,STATIC)
+$(call %debug_var,TARGET)
 
-$(call %debug,OUT_DIR_EXT="${OUT_DIR_EXT}")
+$(call %debug_var,OUT_DIR_EXT)
 
 ####
 
@@ -347,9 +352,9 @@ OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
 
-$(call %debug,SRC_DIR='${SRC_DIR}')
-$(call %debug,SRC_files='$(SRC_files)')
-$(call %debug,OBJ_files='$(OBJ_files)')
+$(call %debug_var,SRC_DIR)
+$(call %debug_var,SRC_files)
+$(call %debug_var,OBJ_files)
 
 ####
 
@@ -364,8 +369,8 @@ ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c &&
 else
 ARCH_available := $(shell ${ECHO} '\#include <stdio.h>' > ${test_file_stem}.c && ${ECHO} 'int main(void){printf("${test_file_stem}");return 0;}' >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} >${devnull} && ${ECHO} true; ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
 endif
-$(call %debug,.SHELLSTATUS=${.SHELLSTATUS})
-$(call %debug,ARCH_available="${ARCH_available}")
+$(call %debug_var,.SHELLSTATUS)
+$(call %debug_var,ARCH_available)
 
 ifneq (,$(or $(filter-out ${ARCH_available},true), $(and $(filter cl,${CC}), $(filter-out ${ARCH_ID},${CC_ARCH_ID}))))
 $(call %error,$(if ${TARGET},Architecture/Target "${ARCH}/${TARGET}",Architecture "${ARCH}") is unavailable/unimplemented for this version of `${CC}`)
@@ -393,7 +398,7 @@ OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
 # 	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
 # 	tags.${O} ttyin.${O} version.${O} regexp.${O}
 
-$(call %debug,OBJ_files=${OBJ_files})
+$(call %debug_var,OBJ_files)
 
 ####
 
