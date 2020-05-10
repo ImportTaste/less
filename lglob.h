@@ -69,7 +69,7 @@
                     char dir[_MAX_DIR]; \
                     char fname[_MAX_FNAME]; \
                     char ext[_MAX_EXT]; \
-                    intptr_t handle;
+                    long handle;
 
 #else
 #if MSDOS_COMPILER==WIN32C && !defined(_MSC_VER) /* Borland C for Windows */
