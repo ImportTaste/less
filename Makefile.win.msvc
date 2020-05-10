@@ -195,6 +195,7 @@ ifeq (${CC},clang)
 undefine LIB # no 'override' to allow definition on command line
 endif
 endif
+$(call %debug_var,LIB)
 
 ####
 
@@ -224,28 +225,6 @@ endif
 
 ####
 
-# DQUOTE := \"
-# BQUOTE := $(firstword \` \`)
-# ifeq ($(OS),Windows_NT)
-# DQUOTE := $(subst \,,${DQUOTE})
-# BQUOTE := $(subst \,,${BQUOTE})
-# endif
-
-makefile_path := $(lastword ${MAKEFILE_LIST})
-makefile_abs_path := $(abspath ${makefile_path})
-makefile_dir := $(abspath $(dir ${makefile_abs_path}))
-# ifeq (${OS},Windows_NT)
-# current_dir := $(abspath $(shell "$(COMSPEC)" /x/d/c echo %CD%))## %CD% requires CMD extensions
-# else
-# current_dir := $(abspath $(shell echo $$PWD))
-# endif
-current_dir = ${CURDIR}
-
-$(call %debug_var,makefile_path)
-$(call %debug_var,makefile_abs_path)
-$(call %debug_var,makefile_dir)
-$(call %debug_var,current_dir)
-
 OUT_DIR_EXT := $(if $(filter-out ${falsey},${STATIC}),,.dynamic)
 
 ARCH_default := i686
@@ -258,6 +237,7 @@ endif
 
 ifneq (${TARGET},)
 CFLAGS += --target=$(TARGET)
+LDFLAGS += --target=$(TARGET)
 OUT_DIR_EXT := ${OUT_DIR_EXT}.$(TARGET)
 else
 CC_machine := $(shell ${CC} $(if $(filter cl,${CC}),,-dumpmachine) 2>&1)
@@ -278,6 +258,10 @@ $(call %debug_var,CC_ARCH_ID)
 $(call %debug_var,STATIC)
 $(call %debug_var,TARGET)
 
+$(call %debug_var,CFLAGS)
+$(call %debug_var,CXXFLAGS)
+$(call %debug_var,LDFLAGS)
+
 $(call %debug_var,OUT_DIR_EXT)
 
 ####
@@ -286,13 +270,15 @@ OS_PREFIX=
 ifeq (${OSID},win)
 OSID_name  ?= windows
 OS_PREFIX  := win.
-CC_o       := $(or $(if $(filter cl,${CC}),/Fe),-o${SPACE})
+CC_e       := $(or $(if $(filter cl,${CC}),/Fe),-o${SPACE})
+CC_o       := $(or $(if $(filter cl,${CC}),/Fo),-o${SPACE})
 LD_o       := $(or $(if $(filter cl,${CC}),/out:),-o${SPACE})
 EXEEXT     := .exe
 O          := $(if $(filter cl,${CC}),obj,o)
 #
+AWK        := goawk ## from `go get github.com/benhoyt/goawk`
+CAT        := "${SystemRoot}\System32\findstr" /r .*
 CP         := copy /y
-AWK        := goawk
 ECHO       := echo
 GREP       := grep
 MKDIR      := mkdir
@@ -311,13 +297,15 @@ ECHO_SQ    :=
 else
 OSID_name  ?= $(shell uname | tr '[:upper:]' '[:lower:]')
 OS_PREFIX  := ${OSID_name}.
+CC_e       := -o${SPACE}
 CC_o       := -o${SPACE}
 LD_o       := -o${SPACE}
 EXEEXT     :=
 O          := o
 #
-CP         := cp
 AWK        := awk
+CAT        := cat
+CP         := cp
 ECHO       := echo
 GREP       := grep
 MKDIR      := mkdir -p
