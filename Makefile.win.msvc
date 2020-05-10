@@ -7,9 +7,7 @@
 # NOTE: * requires `make` version 4.0+ (minimum needed for correct path functions)
 # NOTE: `make` doesn't handle spaces within file names without gyrations (see <https://stackoverflow.com/questions/9838384/can-gnu-make-handle-filenames-with-spaces>@@<https://archive.is/PYKKq>)
 
-NAME = less
-
-# NOTE: NAME default == parent directory name (if not set)
+NAME = less ## empty/null => autoset to name of containing folder
 
 ####
 
@@ -18,11 +16,11 @@ NAME = less
 # spell-checker:ignore (targets) realclean vclean veryclean
 # spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef findstring firstword ifeq ifneq lastword notdir undefine
 #
-# spell-checker:ignore (MSVC flags) defaultlib nologo
+# spell-checker:ignore (CC) DDEBUG DNDEBUG NDEBUG Ofast Werror Wextra Xclang Xlinker dumpmachine flto flto-visibility-public-std fpie nodefaultlib nologo nothrow
 # spell-checker:ignore (abbrev/acronyms) LLVM MSVC MinGW POSIX VCvars
-# spell-checker:ignore (flags/options) DDEBUG DNDEBUG NDEBUG Werror Wextra Xclang dumpmachine flto flto-visibility-public-std nologo nothrow
-# spell-checker:ignore (libraries) libcmt lstdc stdext
-# spell-checker:ignore (jargon) deps delims executables multilib
+# spell-checker:ignore (libraries) libcmt libgcc libstdc lmsvcrt lstdc stdext
+# spell-checker:ignore (jargon) autoset deps delims executables maint multilib
+# spell-checker:ignore (names) benhoyt rivy
 # spell-checker:ignore (shell/nix) mkdir printf rmdir uname
 # spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring mkdir windir
 # spell-checker:ignore (utils) goawk
@@ -372,7 +370,7 @@ $(call %debug,OBJ_files=${OBJ_files})
 
 ####
 
-is_VC6 = $(shell "${CC}" 2>&1 | "%SystemRoot%\System32\findstr" /i /c:"compiler version 12.")
+is_VC6 = ${shell "${CC}" 2>&1 | ${FINDSTR} /i /c:"compiler version 12."}
 
 # VC6-specific flags
 ifneq (,${is_VC6})
