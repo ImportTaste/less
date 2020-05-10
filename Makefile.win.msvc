@@ -13,7 +13,7 @@ NAME = less
 
 ####
 
-# spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl ttyin
+# spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl scrsize ttyin
 
 # spell-checker:ignore (targets) realclean vclean veryclean
 # spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef findstring firstword ifeq ifneq lastword notdir undefine
@@ -26,12 +26,13 @@ NAME = less
 # spell-checker:ignore (shell/nix) mkdir printf rmdir uname
 # spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring mkdir windir
 # spell-checker:ignore (utils) goawk
-# spell-checker:ignore (vars) BQUOTE CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE DQUOTE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJ_deps OSID devnull falsey
+# spell-checker:ignore (vars) BQUOTE CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE DQUOTE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJ_deps OSID SQUOTE devnull falsey
 
 #### Start of system configuration section. ####
 
 CC = cl
 CXX = cl
+LD = link
 
 ## ref: [MSVC Compiler Options] https://msdn.microsoft.com/en-us/library/fwkeyyhe.aspx @@ https://archive.is/aOAtH
 
@@ -52,7 +53,7 @@ CFLAGS_COMPILE_ONLY = /c
 ## /D "NDEBUG" :: deactivate assert()
 ## /D "_CRT_SECURE_NO_WARNING" :: compiler directive == suppress "unsafe function" compiler warning
 CFLAGS = /nologo /W3 /WX /MT /EHsc /Ox /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_CRT_SECURE_NO_WARNINGS"
-LDFLAGS = /nologo## /subsystem:console /incremental:no /machine:I386
+LDFLAGS = /nologo /subsystem:console /incremental:no /machine:I386
 # VC6-specific flags
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
 LDFLAGS_VC6 = /ignore:4254
@@ -88,10 +89,10 @@ ifeq (${MAKE_VERSION_major},4)
 MAKE_VERSION_fail := $(filter $(MAKE_VERSION_minor),)
 endif
 ifneq ($(MAKE_VERSION_fail),)
-$(call _info,MAKE_VERSION=${MAKE_VERSION})
-# $(call _info,MAKE_VERSION_major=${MAKE_VERSION_major})
-# $(call _info,MAKE_VERSION_minor=${MAKE_VERSION_minor})
-$(call _error,`make` v4.0+ required)
+$(call %info,MAKE_VERSION=${MAKE_VERSION})
+# $(call %info,MAKE_VERSION_major=${MAKE_VERSION_major})
+# $(call %info,MAKE_VERSION_minor=${MAKE_VERSION_minor})
+$(call %error,`make` v4.0+ required)
 endif
 
 # for Windows OS, set SHELL to `%ComSpec%` or `cmd` (note: environment/${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
@@ -102,7 +103,7 @@ COMSPEC := $(or ${ComSpec},${COMSPEC},${comspec})
 SystemRoot := $(or ${SystemRoot},${SYSTEMROOT},${systemroot},${windir})
 SHELL := $(firstword $(wildcard ${COMSPEC} ${SystemRoot}/System32/cmd.exe) cmd)
 endif
-$(call _debug,SHELL=${SHELL})
+$(call %debug,SHELL=${SHELL})
 
 ESCAPE := ## ANSI escape character
 color_black = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;30m,)
@@ -121,24 +122,14 @@ color_info = ${color_blue}
 color_warning = ${color_yellow}
 color_error = ${color_red}
 
-define _error
-$(error ${color_error}ERR!:${color_reset} ${1})
-endef
-define _debug
-$(if $(filter-out ${falsey},${MAKEFLAGS_debug}),$(info ${color_debug}debug:${color_reset} ${1}),)
-endef
-define _info
-$(info ${color_info}info:${color_reset} ${1})
-endef
-define _success
-$(info $(call _success_text,${1}))
-endef
-define _success_text
-${color_success}SUCCESS:${color_reset} ${1}
-endef
-define _warning
-$(warning ${color_warning}WARN:${color_reset} ${1})
-endef
+%error = $(error ${color_error}ERR!:${color_reset} ${1})
+%debug = $(if $(filter-out ${falsey},${MAKEFLAGS_debug}),$(info ${color_debug}debug:${color_reset} ${1}),)
+%info = $(info ${color_info}info:${color_reset} ${1})
+%success = $(info $(call %success_text,${1}))
+%success_text = ${color_success}SUCCESS:${color_reset} ${1}
+%warning = $(warning ${color_warning}WARN:${color_reset} ${1})
+
+%eq = $(and $(findstring $(1),$(2)),$(findstring $(2),$(1)))
 
 ####
 
@@ -153,8 +144,8 @@ override STATIC := $(or $(if $(filter-out ${falsey},${STATIC}),true,false))
 override VERBOSE := $(or $(if $(filter-out ${falsey},${VERBOSE}),true,false))
 override MAKEFLAGS_debug := $(or $(if $(or $(filter-out ${falsey},${MAKEFLAGS_debug}),$(filter-out ${falsey},${MAKEFILE_debug})),true,false))
 
-$(call _debug,DEBUG=${DEBUG})
-$(call _debug,VERBOSE=${VERBOSE})
+$(call %debug,DEBUG=${DEBUG})
+$(call %debug,VERBOSE=${VERBOSE})
 
 CFLAGS += ${CFLAGS_DEBUG_${DEBUG}}
 CFLAGS += ${CFLAGS_VERBOSE_${VERBOSE}}
@@ -162,8 +153,8 @@ LDFLAGS += ${LDFLAGS_STATIC_${STATIC}}
 LDFLAGS += ${LDFLAGS_${CC}}
 LDFLAGS += ${LDFLAGS_${CC}_${OSID}}
 
-$(call _debug,CFLAGS=${CFLAGS})
-$(call _debug,LDFLAGS=${LDFLAGS})
+$(call %debug,CFLAGS=${CFLAGS})
+$(call %debug,LDFLAGS=${LDFLAGS})
 
 ####
 
@@ -182,22 +173,23 @@ devnull := $(if $(filter win,${OSID}),NUL,/dev/null)
 COMMA := ,
 BQUOTE := `
 DQUOTE := "
+SQUOTE := '
 NULL :=
 SPACE := $() $()
 
 # detect ${CC}
 CC_check_flags := $(if $(filter cl,${CC}),,-v)
 ifeq (,$(shell "${CC}" ${CC_check_flags} >${devnull} 2>&1 && echo ${CC} present))
-$(call _error,Missing required compiler (`${CC}`))
+$(call %error,Missing required compiler (`${CC}`))
 endif
 
 ifeq (${SPACE},$(findstring ${SPACE},${makefile_abs_path}))
-$(call _error,<SPACE>'s within project directory may cause issues)
+$(call %error,<SPACE>'s within project directory may cause issues)
 endif
 
 # Since we rely on paths relative to the makefile location, abort if make isn't being run from there.
 ifneq ($(makefile_dir),$(current_dir))
-$(call _error,Invalid current directory; this makefile must be invoked from the directory it resides in)
+$(call %error,Invalid current directory; this makefile must be invoked from the directory it resides in)
 endif
 
 ####
@@ -219,10 +211,10 @@ makefile_dir := $(abspath $(dir ${makefile_abs_path}))
 # endif
 current_dir = ${CURDIR}
 
-$(call _debug,makefile_path="$(makefile_path)")
-$(call _debug,makefile_abs_path="$(makefile_abs_path)")
-$(call _debug,makefile_dir="$(makefile_dir)")
-$(call _debug,current_dir="$(current_dir)")
+$(call %debug,makefile_path="$(makefile_path)")
+$(call %debug,makefile_abs_path="$(makefile_abs_path)")
+$(call %debug,makefile_dir="$(makefile_dir)")
+$(call %debug,current_dir="$(current_dir)")
 
 OUT_DIR_EXT := $(if $(filter-out ${falsey},${STATIC}),,.dynamic)
 
@@ -231,7 +223,7 @@ ARCH_i686 := i686 x86
 ARCH_x86_64 := x64 x86_64
 ARCH_allowed := $(sort 32 x32 ${ARCH_i686} 64 ${ARCH_x86_64})
 ifneq (${ARCH},$(filter ${ARCH},${ARCH_allowed}))
-$(call _error,Unknown architecture "$(ARCH)"; valid values are [""$(subst $(SPACE),$(),$(addprefix ${COMMA}${DQUOTE},$(addsuffix ${DQUOTE},${ARCH_allowed})))])
+$(call %error,Unknown architecture "$(ARCH)"; valid values are [""$(subst $(SPACE),$(),$(addprefix ${COMMA}${DQUOTE},$(addsuffix ${DQUOTE},${ARCH_allowed})))])
 endif
 
 ifneq (${TARGET},)
@@ -244,19 +236,19 @@ CC_ARCH_ID := $(if $(filter ${CC_ARCH},32 x32 ${ARCH_i686}),32,64)
 override ARCH := $(or ${ARCH},${CC_ARCH})
 ARCH_ID := $(if $(filter ${ARCH},32 x32 ${ARCH_i686}),32,64)
 CFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
-# LDFLAGS += -m${ARCH_ID}
+LDFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
 OUT_DIR_EXT =.x${ARCH_ID}
 endif # defined ${TARGET}
 
-$(call _debug,ARCH="${ARCH}")
-$(call _debug,ARCH_ID="${ARCH_ID}")
-$(call _debug,CC_machine="${CC_machine}")
-$(call _debug,CC_ARCH="${CC_ARCH}")
-$(call _debug,CC_ARCH_ID="${CC_ARCH_ID}")
-$(call _debug,STATIC="${STATIC}")
-$(call _debug,TARGET="${TARGET}")
+$(call %debug,ARCH="${ARCH}")
+$(call %debug,ARCH_ID="${ARCH_ID}")
+$(call %debug,CC_machine="${CC_machine}")
+$(call %debug,CC_ARCH="${CC_ARCH}")
+$(call %debug,CC_ARCH_ID="${CC_ARCH_ID}")
+$(call %debug,STATIC="${STATIC}")
+$(call %debug,TARGET="${TARGET}")
 
-$(call _debug,OUT_DIR_EXT="${OUT_DIR_EXT}")
+$(call %debug,OUT_DIR_EXT="${OUT_DIR_EXT}")
 
 ####
 
@@ -264,46 +256,50 @@ OS_PREFIX=
 ifeq (${OSID},win)
 OSID_name  ?= windows
 OS_PREFIX  := win.
-CC_o 	   := $(or $(if $(filter cl,${CC}),/Fe:),-o${SPACE})
-EXEEXT 	   := .exe
+CC_o       := $(or $(if $(filter cl,${CC}),/Fe),-o${SPACE})
+LD_o       := $(or $(if $(filter cl,${CC}),/out:),-o${SPACE})
+EXEEXT     := .exe
 O          := $(if $(filter cl,${CC}),obj,o)
 #
-CP 		   := copy /y
-AWK		   := goawk
-ECHO 	   := echo
-GREP	   := grep
-MKDIR 	   := mkdir
-RM 		   := del
-RM_r 	   := $(RM) /s
-RMDIR	   := rmdir /s/q
-FIND	   := "${SystemRoot}\System32\find"
+CP         := copy /y
+AWK        := goawk
+ECHO       := echo
+GREP       := grep
+MKDIR      := mkdir
+RM         := del
+RM_r       := $(RM) /s
+RMDIR      := rmdir /s/q
+FIND       := "${SystemRoot}\System32\find"
 FINDSTR    := "${SystemRoot}\System32\findstr"
-MORE	   := "${SystemRoot}\System32\more"
-SORT	   := "${SystemRoot}\System32\sort"
+MORE       := "${SystemRoot}\System32\more"
+SORT       := "${SystemRoot}\System32\sort"
 STRIP      := $(or $(if $(filter clang,${CC}),llvm-strip),strip)
 #
-ECHO_DQ	   :=
-ECHO_SQ	   :=
+ECHO_NL    := echo.
+ECHO_DQ    :=
+ECHO_SQ    :=
 else
 OSID_name  ?= $(shell uname | tr '[:upper:]' '[:lower:]')
 OS_PREFIX  := ${OSID_name}.
-CC_o 	   := -o${SPACE}
-EXEEXT 	   :=
+CC_o       := -o${SPACE}
+LD_o       := -o${SPACE}
+EXEEXT     :=
 O          := o
 #
-CP 		   := cp
-AWK		   := awk
-ECHO 	   := echo
-GREP	   := grep
-MKDIR 	   := mkdir -p
-RM 		   := rm
-RM_r 	   := ${RM} -r
-RMDIR 	   := ${RM} -r
-SORT	   := sort
-STRIP	   := strip
+CP         := cp
+AWK        := awk
+ECHO       := echo
+GREP       := grep
+MKDIR      := mkdir -p
+RM         := rm
+RM_r       := ${RM} -r
+RMDIR      := ${RM} -r
+SORT       := sort
+STRIP      := strip
 #
-ECHO_DQ	   := "
-ECHO_SQ	   := '
+ECHO_NL    := echo
+ECHO_DQ    := "
+ECHO_SQ    := '
 endif
 
 ####
@@ -312,9 +308,12 @@ BUILD_DIR ?= \#build
 CONFIG	  ?= $(if $(filter-out ${falsey},${DEBUG}),debug,release)
 
 SRC_DIR = .
-OUT_DIR = ${BUILD_DIR}/$(OS_PREFIX)$(CONFIG).${CC}$(OUT_DIR_EXT)
-BIN_DIR = ${OUT_DIR}/bin
-OBJ_DIR = ${OUT_DIR}/obj
+# OUT_DIR = ${BUILD_DIR}/$(OS_PREFIX)$(CONFIG).${CC}$(OUT_DIR_EXT)
+# BIN_DIR = ${OUT_DIR}/bin
+# OBJ_DIR = ${OUT_DIR}/obj
+OUT_DIR = .
+BIN_DIR = .
+OBJ_DIR = .
 
 SRC_files := $(wildcard ${SRC_DIR}/*.c ${SRC_DIR}/*.cpp ${SRC_DIR}/*.cxx)
 # SRC_files := $(addprefix ",$(addsuffix ",$(SRC_files)))
@@ -323,9 +322,9 @@ OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
 
-$(call _debug,SRC_DIR='${SRC_DIR}')
-$(call _debug,SRC_files='$(SRC_files)')
-$(call _debug,OBJ_files='$(OBJ_files)')
+$(call %debug,SRC_DIR='${SRC_DIR}')
+$(call %debug,SRC_files='$(SRC_files)')
+$(call %debug,OBJ_files='$(OBJ_files)')
 
 ####
 
@@ -334,25 +333,17 @@ test_file_stem = $(subst ${SPACE},_,__MAKE__${CC}_${ARCH}_${TARGET}_test__)
 test_file_cc_string = ${CC_o}${test_file_stem}${EXEEXT}
 ifeq (${OSID},win)
 ifneq (${CC},cl)
-ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
+ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} >${devnull} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
 endif
-ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
+ARCH_available := $(shell ${ECHO} \#include ^<stdio.h^> > ${test_file_stem}.c && ${ECHO} int main(void){printf("${test_file_stem}");return 0;} >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} >${devnull} && ${ECHO} true& ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
 else
-ARCH_available := $(shell ${ECHO} '\#include <stdio.h>' > ${test_file_stem}.c && ${ECHO} 'int main(void){printf("${test_file_stem}");return 0;}' >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} && ${ECHO} true; ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
+ARCH_available := $(shell ${ECHO} '\#include <stdio.h>' > ${test_file_stem}.c && ${ECHO} 'int main(void){printf("${test_file_stem}");return 0;}' >> ${test_file_stem}.c && ${CC} $(filter-out ${CFLAGS_VERBOSE_true},${CFLAGS}) ${test_file_stem}.c ${test_file_target_string} >${devnull} && ${ECHO} true; ${RM} ${test_file_stem}${EXEEXT} ${test_file_stem}.*)
 endif
-$(call _debug,.SHELLSTATUS=${.SHELLSTATUS})
-$(call _debug,ARCH_available="${ARCH_available}")
+$(call %debug,.SHELLSTATUS=${.SHELLSTATUS})
+$(call %debug,ARCH_available="${ARCH_available}")
 
 ifneq (,$(or $(filter-out ${ARCH_available},true), $(and $(filter cl,${CC}), $(filter-out ${ARCH_ID},${CC_ARCH_ID}))))
-$(call _error,$(if ${TARGET},Architecture/Target "${ARCH}/${TARGET}",Architecture "${ARCH}") is unavailable/unimplemented for this version of `${CC}`)
-endif
-
-####
-
-ifeq (${makefile_path},Makefile)
-make_help_alias ?= make
-else
-make_help_alias ?= make -f "${makefile_path}"
+$(call %error,$(if ${TARGET},Architecture/Target "${ARCH}/${TARGET}",Architecture "${ARCH}") is unavailable/unimplemented for this version of `${CC}`)
 endif
 
 ####
@@ -362,11 +353,55 @@ ${PROJECT_TARGET}: # *default* target (see recipe/rule below)
 
 ####
 
+AUX_EXES = ${BIN_DIR}/lessecho${EXEEXT} ${BIN_DIR}/lesskey${EXEEXT}
+
+OBJ_files := $(filter-out ${SRC_DIR}/lessecho.c ${SRC_DIR}/lesskey.c ${SRC_DIR}/scrsize.c,${SRC_files})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
+
+# OBJ_files := \
+# 	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
+# 	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
+# 	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
+# 	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
+# 	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
+# 	tags.${O} ttyin.${O} version.${O} regexp.${O}
+
+$(call %debug,OBJ_files=${OBJ_files})
+
+####
+
+is_VC6 = $(shell "${CC}" 2>&1 | "%SystemRoot%\System32\findstr" /i /c:"compiler version 12.")
+
+# VC6-specific flags
+ifneq (,${is_VC6})
+## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
+LDFLAGS += ${LDFLAGS_VC6}
+endif
+
+####
+
+${AUX_EXES}: %${EXEEXT}: %.${O} version.${O} | ${BIN_DIR}
+	${LD} ${LDFLAGS} "$<" "version.${O}" ${LIBS} /out:"$@"
+	@${ECHO} ${ECHO_SQ}$(call %success_text,made '$@'.)${ECHO_SQ}
+
+${OBJ_files}: ${OBJ_deps} | ${OBJ_DIR}
+
+defines.h: defines.${DEFINETYPE}
+	${CP} defines.${DEFINETYPE} defines.h
+
+####
+
 .PHONY: help
+make_help_alias ?= $(if $(call %eq,Makefile,${makefile_path}),Makefile,make -f "${makefile_path}")
 help: ## Display help
-	@${ECHO} usage: ${BQUOTE}${make_help_alias} [ARCH=..] [COLOR=..] [DEBUG=..] [STATIC=..] [TARGET=..] [VERBOSE=..] [MAKE_TARGET...]${BQUOTE}
-	@${ECHO} builds ${BQUOTE}${PROJECT_TARGET}${BQUOTE} within ${DQUOTE}$(current_dir)${DQUOTE}
-	@${ECHO} ${ECHO_SQ}${color_info}MAKE_TARGETs:${color_reset}${ECHO_SQ}
+	@${ECHO} ${BQUOTE}${make_help_alias}${BQUOTE}
+	@${ECHO} Usage: ${BQUOTE}${make_help_alias} [ARCH=..] [COLOR=..] [DEBUG=..] [STATIC=..] [TARGET=..] [VERBOSE=..] [MAKE_TARGET...]${BQUOTE}
+	@${ECHO} Builds ${SQUOTE}${PROJECT_TARGET}${SQUOTE} within ${DQUOTE}$(current_dir)${DQUOTE}
+	@${ECHO_NL}
+	@${ECHO} MAKE_TARGETs:
+	@${ECHO_NL}
 ifeq (${OSID},win)
 	@${FINDSTR} "^[a-zA-Z-]*:.*##" "${makefile_path}" | ${SORT} | for /f "tokens=1-2,* delims=:#" %%g in ('${MORE}') do @(@call set "t=%%g                " & @call echo ${color_success}%%t:~0,15%%${color_reset} ${color_info}%%i${color_reset} )
 else
@@ -390,7 +425,7 @@ clean: ## Remove build artifacts (including intermediate files)
 
 .PHONY: all build build-aux compile realclean rebuild vclean veryclean
 all: build build-aux ## Build all project executables
-build: ${PROJECT_TARGET} ## Build project
+build: ${PROJECT_TARGET} ## Build project (`less`)
 build-aux: ${AUX_EXES} ## Build auxillary executables (`lessecho` and `lesskey`)
 compile: ${OBJ_files} ## Build intermediate files
 realclean: clean
@@ -400,47 +435,12 @@ veryclean: realclean
 
 ####
 
-is_VC6 = $(shell "${CC}" 2>&1 | "%SystemRoot%\System32\findstr" /i /c:"compiler version 12.")
-
-# VC6-specific flags
-ifneq (,${is_VC6})
-## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
-LDFLAGS += LDFLAGS_VC6
-endif
-
-####
-
-OBJ_files := \
-	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
-	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
-	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
-	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
-	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
-	tags.${O} ttyin.${O} version.${O} regexp.${O}
-
-$(call _debug,OBJ_files=${OBJ_files})
-
-####
-
-AUX_EXES = lessecho${EXEEXT} lesskey${EXEEXT}
-
-${AUX_EXES}: %${EXEEXT}: %.${O} version.${O} | ${BIN_DIR}
-	${LD} ${LDFLAGS} "$<" "version.${O}" ${LIBS} /out:"$@"
-	@${ECHO} SUCCESS: made "$@"
-
-${OBJ_files}: ${OBJ_deps} | ${OBJ_DIR}
-
-defines.h: defines.${DEFINETYPE}
-	${CP} defines.${DEFINETYPE} defines.h
-
-####
-
 ${PROJECT_TARGET}: ${OBJ_files} ${makefile_abs_path} | ${BIN_DIR}
-	${CC} ${CXXFLAGS} ${CFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${CC_o}"$@" ${LDFLAGS} ${LIBS}
+	${LD} ${LDFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${LIBS} ${LD_o}"$@"
 ifeq (,$(and ${STRIP},$(filter-out ${falsey},${DEBUG})))
 	${STRIP} "$@"
 endif
-	@${ECHO} ${ECHO_SQ}$(call _success_text,made "$@")${ECHO_SQ}
+	@${ECHO} ${ECHO_SQ}$(call %success_text,made '$@'.)${ECHO_SQ}
 
 ${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.c ${makefile_abs_path} | ${OBJ_DIR}
 	${CC} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
@@ -451,11 +451,11 @@ ${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cpp ${makefile_abs_path} | ${OBJ_DIR}
 ${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cxx ${makefile_abs_path} | ${OBJ_DIR}
 	${CXX} ${CFLAGS_COMPILE_ONLY} ${CXXFLAGS} ${CXXFLAGS_${CC}} ${CFLAGS} "$<" ${CC_o}"$@"
 
-${BIN_DIR}:
-	${MKDIR} "${BIN_DIR}"
+# ${BIN_DIR}:
+# 	${MKDIR} "${BIN_DIR}"
 
-${OBJ_DIR}:
-	${MKDIR} "${OBJ_DIR}"
+# ${OBJ_DIR}:
+# 	${MKDIR} "${OBJ_DIR}"
 
-${OUT_DIR}:
-	${MKDIR} "${OUT_DIR}"
+# ${OUT_DIR}:
+# 	${MKDIR} "${OUT_DIR}"
