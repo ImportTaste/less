@@ -2,10 +2,10 @@
 # Windows version; MS Visual C/C++
 # make (GNU make) version
 
-# `make -f Makefile.win.msvc`
-
 # NOTE: * requires `make` version 4.0+ (minimum needed for correct path functions)
 # NOTE: `make` doesn't handle spaces within file names without gyrations (see <https://stackoverflow.com/questions/9838384/can-gnu-make-handle-filenames-with-spaces>@@<https://archive.is/PYKKq>)
+
+# `make -f Makefile.win.msvc`
 
 NAME = less ## empty/null => autoset to name of containing folder
 
@@ -14,12 +14,12 @@ NAME = less ## empty/null => autoset to name of containing folder
 # spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl scrsize ttyin
 
 # spell-checker:ignore (targets) realclean vclean veryclean
-# spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef findstring firstword ifeq ifneq lastword notdir undefine
+# spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef findstring firstword gmake ifeq ifneq lastword notdir undefine
 #
 # spell-checker:ignore (CC) DDEBUG DNDEBUG NDEBUG Ofast Werror Wextra Xclang Xlinker dumpmachine flto flto-visibility-public-std fpie nodefaultlib nologo nothrow
 # spell-checker:ignore (abbrev/acronyms) LLVM MSVC MinGW POSIX VCvars
-# spell-checker:ignore (libraries) libcmt libgcc libstdc lmsvcrt lstdc stdext
 # spell-checker:ignore (jargon) autoset deps delims executables maint multilib
+# spell-checker:ignore (libraries) libcmt libgcc libstdc lmsvcrt lstdc stdext
 # spell-checker:ignore (names) benhoyt rivy
 # spell-checker:ignore (shell/nix) mkdir printf rmdir uname
 # spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring mkdir windir
@@ -54,7 +54,7 @@ CFLAGS = /nologo /W3 /WX /MT /EHsc /Ox /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_CO
 LDFLAGS = /nologo /subsystem:console /incremental:no /machine:I386
 # VC6-specific flags
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
-LDFLAGS_VC6 = /ignore:4254
+LDFLAGS_VC6_true = /ignore:4254
 
 # DEBUG flags
 ## /MTd :: static linking to debug library
@@ -62,7 +62,7 @@ LDFLAGS_VC6 = /ignore:4254
 ## /Gm :: enables minimal rebuild
 ## /Zi :: generates complete debugging information
 #CFLAGS = /nologo /W3 /MTd /EHsc /Od /Gm /Zi /I "." /D "WIN32" /D "DEBUG" /D "_CONSOLE" /c
-#LDFLAGS = /nologo /subsystem:console /incremental:yes /debug /machine:I386 ${LDFLAGS_VC6}
+#LDFLAGS = /nologo /subsystem:console /incremental:yes /debug /machine:I386 ${LDFLAGS_VC6_true}
 
 LIBS = user32.lib
 
@@ -77,7 +77,12 @@ MAKEFLAGS_debug ?= $(if $(findstring d,${MAKEFLAGS}),true,false)## NOTE: use `-d
 
 #### End of system configuration section. ####
 
+falsey := false 0 f n no off
 OSID := $(or $(filter win,${OS:Windows_NT=win}),nix)## OSID = [nix,win]
+
+%eq = $(and $(findstring $(1),$(2)),$(findstring $(2),$(1)))
+
+####
 
 # require at least `make` v4.0 (minimum needed for correct path functions)
 MAKE_VERSION_major := $(word 1,$(subst ., ,$(MAKE_VERSION)))
@@ -86,12 +91,25 @@ MAKE_VERSION_fail := $(filter $(MAKE_VERSION_major),3 2 1 0)
 ifeq (${MAKE_VERSION_major},4)
 MAKE_VERSION_fail := $(filter $(MAKE_VERSION_minor),)
 endif
+$(call %debug_var,MAKE_VERSION)
+$(call %debug_var,MAKE_VERSION_major)
+$(call %debug_var,MAKE_VERSION_minor)
+$(call %debug_var,MAKE_VERSION_fail)
 ifneq ($(MAKE_VERSION_fail),)
-$(call %info,MAKE_VERSION=${MAKE_VERSION})
-# $(call %info,MAKE_VERSION_major=${MAKE_VERSION_major})
-# $(call %info,MAKE_VERSION_minor=${MAKE_VERSION_minor})
-$(call %error,`make` v4.0+ required)
+$(call %error,`make` v4.0+ required (currently using v${MAKE_VERSION}))
 endif
+
+makefile_path := $(lastword ${MAKEFILE_LIST})
+makefile_abs_path := $(abspath ${makefile_path})
+makefile_dir := $(abspath $(dir ${makefile_abs_path}))
+current_dir := ${CURDIR}
+make_invoke_alias ?= $(if $(call %eq,Makefile,${makefile_path}),Makefile,make -f "${makefile_path}")
+
+$(call %debug,makefile_path="$(makefile_path)")
+$(call %debug,makefile_abs_path="$(makefile_abs_path)")
+$(call %debug,makefile_dir="$(makefile_dir)")
+$(call %debug,current_dir="$(current_dir)")
+$(call %debug,current_dir="$(make_invoke_alias)")
 
 # for Windows OS, set SHELL to `%ComSpec%` or `cmd` (note: environment/${OS}=="Windows_NT" for XP, 2000, Vista, 7, 10 ...)
 # * `make` may otherwise use an incorrect shell (eg, `bash`), if found; "syntax error: unexpected end of file" error output is indicative
@@ -102,6 +120,8 @@ SystemRoot := $(or ${SystemRoot},${SYSTEMROOT},${systemroot},${windir})
 SHELL := $(firstword $(wildcard ${COMSPEC} ${SystemRoot}/System32/cmd.exe) cmd)
 endif
 $(call %debug,SHELL=${SHELL})
+
+####
 
 ESCAPE := ## ANSI escape character
 color_black = $(if $(filter-out ${falsey},${COLOR}),${ESCAPE}[0;30m,)
@@ -127,23 +147,30 @@ color_error = ${color_red}
 %success_text = ${color_success}SUCCESS:${color_reset} ${1}
 %warning = $(warning ${color_warning}WARN:${color_reset} ${1})
 
-%eq = $(and $(findstring $(1),$(2)),$(findstring $(2),$(1)))
+%debug_var = $(call %debug,${1}="${${1}}")
 
 ####
 
+NAME := $(strip ${NAME})
 ifeq (${NAME},)
-override NAME = $(notdir $(abspath $(dir $(abspath $(lastword ${MAKEFILE_LIST})))))
+override NAME = $(notdir ${makefile_dir})
 endif
 
-falsey := 0 f false off n no
 override COLOR := $(or $(if $(filter-out ${falsey},${COLOR}),true,false))
 override DEBUG := $(or $(if $(filter-out ${falsey},${DEBUG}),true,false))
 override STATIC := $(or $(if $(filter-out ${falsey},${STATIC}),true,false))
 override VERBOSE := $(or $(if $(filter-out ${falsey},${VERBOSE}),true,false))
 override MAKEFLAGS_debug := $(or $(if $(or $(filter-out ${falsey},${MAKEFLAGS_debug}),$(filter-out ${falsey},${MAKEFILE_debug})),true,false))
 
-$(call %debug,DEBUG=${DEBUG})
-$(call %debug,VERBOSE=${VERBOSE})
+$(call %debug_var,COLOR)
+$(call %debug_var,DEBUG)
+$(call %debug_var,STATIC)
+$(call %debug_var,VERBOSE)
+
+$(call %debug_var,MAKEFLAGS_debug)
+
+$(call %debug_var,CFLAGS)
+$(call %debug_var,CFLAGS_DEBUG_${DEBUG})
 
 CFLAGS += ${CFLAGS_DEBUG_${DEBUG}}
 CFLAGS += ${CFLAGS_VERBOSE_${VERBOSE}}
@@ -375,7 +402,7 @@ is_VC6 = ${shell "${CC}" 2>&1 | ${FINDSTR} /i /c:"compiler version 12."}
 # VC6-specific flags
 ifneq (,${is_VC6})
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
-LDFLAGS += ${LDFLAGS_VC6}
+LDFLAGS += ${LDFLAGS_VC6_true}
 endif
 
 ####
