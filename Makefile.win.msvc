@@ -103,7 +103,7 @@ makefile_path := $(lastword ${MAKEFILE_LIST})
 makefile_abs_path := $(abspath ${makefile_path})
 makefile_dir := $(abspath $(dir ${makefile_abs_path}))
 current_dir := ${CURDIR}
-make_invoke_alias ?= $(if $(call %eq,Makefile,${makefile_path}),Makefile,make -f "${makefile_path}")
+make_invoke_alias ?= $(if $(call %eq,Makefile,${makefile_path}),make,make -f "${makefile_path}")
 
 $(call %debug_var,makefile_path)
 $(call %debug_var,makefile_abs_path)
