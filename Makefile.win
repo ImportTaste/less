@@ -14,16 +14,16 @@ NAME := less ## empty/null => autoset to name of containing folder
 # spell-checker:ignore () brac cmdbuf forwback funcs ifile lessecho lesskey linenum lsystem optfunc opttbl scrsize ttyin
 
 # spell-checker:ignore (targets) realclean vclean veryclean
-# spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef findstring firstword gmake ifeq ifneq lastword notdir undefine
+# spell-checker:ignore (make) CURDIR MAKEFLAGS SHELLSTATUS TERMERR TERMOUT abspath addprefix addsuffix endef eval findstring firstword gmake ifeq ifneq lastword notdir undefine
 #
 # spell-checker:ignore (CC) DDEBUG DNDEBUG NDEBUG Ofast Werror Wextra Xclang Xlinker dumpmachine flto flto-visibility-public-std fpie nodefaultlib nologo nothrow
 # spell-checker:ignore (abbrev/acronyms) LLVM MSVC MinGW POSIX VCvars
 # spell-checker:ignore (jargon) autoset deps delims executables maint multilib
 # spell-checker:ignore (libraries) libcmt libgcc libstdc lmsvcrt lstdc stdext
-# spell-checker:ignore (names) benhoyt rivy
+# spell-checker:ignore (names) benhoyt rivy Borland
 # spell-checker:ignore (shell/nix) mkdir printf rmdir uname
 # spell-checker:ignore (shell/win) COMSPEC SystemDrive SystemRoot findstr findstring mkdir windir
-# spell-checker:ignore (utils) goawk
+# spell-checker:ignore (utils) goawk ilink
 # spell-checker:ignore (vars) BQUOTE CFLAGS CPPFLAGS CXXFLAGS DEFINETYPE DQUOTE EXEEXT LDFLAGS LIBDIR LIBPATH MAKEDIR OBJ_deps OSID SQUOTE devnull falsey fileset truthy
 
 #### Start of system configuration section. ####
@@ -82,7 +82,7 @@ LIBS :=
 endif ## `clang` or `gcc`
 
 ifeq (cl,${CC})
-CXX := ${CC}
+CXX := cl
 LD := link
 ## `cl` (MSVC)
 ## ref: <https://docs.microsoft.com/en-us/cpp/build/reference/compiler-options-listed-by-category> @@ <https://archive.is/PTPDN>
@@ -156,15 +156,20 @@ OSID := $(or $(filter win,${OS:Windows_NT=win}),nix)## OSID == [nix,win]
 %eq = $(and $(findstring $(1),$(2)),$(findstring $(2),$(1)))
 %as_truthy = $(if $(call %is_truthy,${1}),true,false)
 %is_truthy = $(filter-out ${falsey},${1})
+%is_falsey = $(if $(call %is_truthy,${1}),,true)
+%uniq = $(if ${1},$(firstword ${1}) $(call %uniq,$(filter-out $(firstword ${1}),${1})))
 
 ifeq (${OSID},win)
-%rm_dir = if EXIST "${1}" ${RMDIR} "${1}" && echo "${1}" removed
-%rm_file = if EXIST "${1}" ${RM} "${1}" && echo "${1}" removed
-%rm_fileset = $(if $(shell for %%G in (${1}) do ${RM} "%%G" >${devnull} && echo done),$(shell echo echo "${1}" removed),)
+%rm_dir = if EXIST "${1}" ${RMDIR} "${1}" && echo $(call %info_text,"${1}" removed)
+%rm_file = if EXIST "${1}" ${RM} "${1}" && echo $(call %info_text,"${1}" removed)
+%rm_fileset = $(if $(shell for %%G in (${1}) do ${RM} "%%G" >${devnull} && echo done),$(shell echo echo $(call %info_text,"${1}" removed)),)
 else
-%rm_dir = ls -d "${1}" >${devnull} 2>&1 && { ${RMDIR} "${1}" && echo "${1}" removed; } || true
-%rm_file = ls -d "${1}" >${devnull} 2>&1 && { ${RM} "${1}" && echo "${1}" removed; } || true
+%rm_dir = ls -d "${1}" >${devnull} 2>&1 && { ${RMDIR} "${1}" && echo ${ECHO_SQ}$(call %info_text,"${1}" removed)${ECHO_SQ}; } || true
+%rm_file = ls -d "${1}" >${devnull} 2>&1 && { ${RM} "${1}" && echo ${ECHO_SQ}$(call %info_text,"${1}" removed)${ECHO_SQ}; } || true
+%rm_fileset = for file in ${1}; do ls -d "${1}" >${devnull} 2>&1 && ${RM} "$${file}"; done && echo ${ECHO_SQ}$(call %info_text,"${1}" removed)${ECHO_SQ} || true
 endif
+
+@mkdir_rule = ${1} : ${2} ; ${MKDIR} "$$@"
 
 ####
 
@@ -185,12 +190,16 @@ color_info := ${color_blue}
 color_warning := ${color_yellow}
 color_error := ${color_red}
 
-%error = $(error ${color_error}ERR!:${color_reset} ${1})
-%debug = $(if $(call %is_truthy,${MAKEFLAGS_debug}),$(info ${color_debug}debug:${color_reset} ${1}),)
-%info = $(info ${color_info}info:${color_reset} ${1})
-%success = $(info $(call %success_text,${1}))
+%error_text = ${color_error}ERR!:${color_reset} ${1}
+%debug_text = ${color_debug}debug:${color_reset} ${1}
+%info_text = ${color_info}info:${color_reset} ${1}
 %success_text = ${color_success}SUCCESS:${color_reset} ${1}
-%warning = $(warning ${color_warning}WARN:${color_reset} ${1})
+%warning_text = ${color_warning}WARN:${color_reset} ${1}
+%error = $(error $(call %error_text,${1}))
+%debug = $(if $(call %is_truthy,${MAKEFLAGS_debug}),$(info $(call %debug_text,${1})),)
+%info = $(info $(call %info_text,${1}))
+%success = $(info $(call %success_text,${1}))
+%warning = $(warning $(call %warning_text,${1}))
 
 %debug_var = $(call %debug,${1}="${${1}}")
 
@@ -407,6 +416,11 @@ ECHO_DQ    := "
 ECHO_SQ    := '
 endif
 
+# ${STRIP} available? (missing in some distributions)
+STRIP_check_flags := --version
+STRIP := $(shell "${STRIP}" ${STRIP_check_flags} >${devnull} 2>&1 && echo ${STRIP})
+$(call %debug_var,STRIP)
+
 ####
 
 ifeq (${OSID},win)
@@ -438,20 +452,21 @@ LDFLAGS := $(strip ${LDFLAGS})
 BUILD_DIR ?= \#build
 CONFIG	  ?= $(if $(call %is_truthy,${DEBUG}),debug,release)
 
-# SRC_DIR := src
-# OUT_DIR := ${BUILD_DIR}/$(OS_PREFIX)$(CONFIG)$(if $(call %is_truthy,${STATIC}),,.dynamic).(${CC}@${CC_ver})${OUT_DIR_EXT}
-# BIN_DIR := ${OUT_DIR}/bin
-# OBJ_DIR := ${OUT_DIR}/obj
 SRC_DIR := .
 OUT_DIR := .
-BIN_DIR := .
-OBJ_DIR := .
+OUT_bin := .
+OUT_obj := .
+out_dirs := $(strip $(call %uniq,${OUT_DIR} ${OUT_bin} ${OUT_obj}))
+out_dirs_for_rules := $(strip $(subst \#,\\\#,${out_dirs}))
+
+$(call %debug_var,out_dirs)
+$(call %debug_var,out_dirs_for_rules)
 
 SRC_files := $(wildcard ${SRC_DIR}/*.c ${SRC_DIR}/*.cpp ${SRC_DIR}/*.cxx)
 OBJ_files := $(SRC_files)
-OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
-OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
-OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OUT_obj}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OUT_obj}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OUT_obj}/%.${O})
 
 $(call %debug_var,SRC_DIR)
 $(call %debug_var,SRC_files)
@@ -476,36 +491,32 @@ endif
 
 ####
 
-PROJECT_TARGET := ${BIN_DIR}/${NAME}${EXEEXT}
+PROJECT_TARGET := ${OUT_bin}/${NAME}${EXEEXT}
 ${PROJECT_TARGET}: # *default* target (see recipe/rule below)
 
 ####
 
 AUX_names := lessecho lesskey
-AUX_targets := $(addprefix ${BIN_DIR}/,$(addsuffix ${EXEEXT},${AUX_names}))
+AUX_targets := $(addprefix ${OUT_bin}/,$(addsuffix ${EXEEXT},${AUX_names}))
+
+$(call %debug_var,AUX_names)
+$(call %debug_var,AUX_targets)
 
 OBJ_files := $(filter-out $(addprefix ${SRC_DIR}/,$(addsuffix .c,${AUX_names} scrsize)),${SRC_files})
-OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
-OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
-OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
-
-# OBJ_files := \
-# 	main.${O} screen.${O} brac.${O} ch.${O} charset.${O} cmdbuf.${O} \
-# 	command.${O} cvt.${O} decode.${O} edit.${O} filename.${O} forwback.${O} \
-# 	help.${O} ifile.${O} input.${O} jump.${O} line.${O} linenum.${O} \
-# 	lsystem.${O} mark.${O} optfunc.${O} option.${O} opttbl.${O} os.${O} \
-# 	output.${O} pattern.${O} position.${O} prompt.${O} search.${O} signal.${O} \
-# 	tags.${O} ttyin.${O} version.${O} regexp.${O}
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OUT_obj}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OUT_obj}/%.${O})
+OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OUT_obj}/%.${O})
 
 $(call %debug_var,OBJ_files)
 
 ####
 
-${AUX_targets}: %${EXEEXT}: %.${O} version.${O} ${makefile_abs_path} | ${BIN_DIR}
+${AUX_targets}: %${EXEEXT}: %.${O} version.${O} ${makefile_abs_path} | ${OUT_bin}
 	${LD} ${LDFLAGS} "$<" "version.${O}" ${LIBS} ${LD_o}"$@"
+	$(if $(and ${STRIP},$(call %is_falsey,${DEBUG})),${STRIP} "$@",)
 	@${ECHO} ${ECHO_DQ}$(call %success_text,made '$@'.)${ECHO_DQ}
 
-${OBJ_files}: ${OBJ_deps} | ${OBJ_DIR}
+${OBJ_files}: ${OBJ_deps} | ${OUT_obj}
 
 defines.h: defines.${DEFINETYPE}
 	${CP} defines.${DEFINETYPE} defines.h
@@ -554,29 +565,21 @@ veryclean: realclean
 ####
 
 # ref: [`make` default rules]<https://www.gnu.org/software/make/manual/html_node/Catalogue-of-Rules.html> @@ <https://archive.is/KDNbA>
+# ref: [make ~ `eval()`](http://make.mad-scientist.net/the-eval-function) @ <https://archive.is/rpUfG>
 
-${PROJECT_TARGET}: ${OBJ_files} ${makefile_abs_path} | ${BIN_DIR}
+${PROJECT_TARGET}: ${OBJ_files} ${makefile_abs_path} | ${OUT_bin}
 	${LD} ${LDFLAGS} $(addprefix ",$(addsuffix ",${OBJ_files})) ${LIBS} ${LD_o}"$@"
-ifeq (,$(and ${STRIP},$(call %is_truthy,${DEBUG})))
-	${STRIP} "$@"
-endif
+	$(if $(and ${STRIP},$(call %is_falsey,${DEBUG})),${STRIP} "$@",)
 	@${ECHO} ${ECHO_DQ}$(call %success_text,made '$@'.)${ECHO_DQ}
 
-${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.c ${makefile_abs_path} | ${OBJ_DIR}
+${OUT_obj}/%.${O}: ${SRC_DIR}/%.c ${makefile_abs_path} | ${OUT_obj}
 	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
 
-${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cpp ${makefile_abs_path} | ${OBJ_DIR}
+${OUT_obj}/%.${O}: ${SRC_DIR}/%.cpp ${makefile_abs_path} | ${OUT_obj}
 	${CXX} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CXXFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
 
-${OBJ_DIR}/%.${O}: ${SRC_DIR}/%.cxx ${makefile_abs_path} | ${OBJ_DIR}
+${OUT_obj}/%.${O}: ${SRC_DIR}/%.cxx ${makefile_abs_path} | ${OUT_obj}
 	${CXX} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CXXFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
 #or	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
 
-# ${BIN_DIR}:
-# 	${MKDIR} "${BIN_DIR}"
-
-# ${OBJ_DIR}:
-# 	${MKDIR} "${OBJ_DIR}"
-
-# ${OUT_DIR}:
-# 	${MKDIR} "${OUT_DIR}"
+$(foreach dir,${out_dirs_for_rules},$(eval $(call @mkdir_rule,${dir})))
