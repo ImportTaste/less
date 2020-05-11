@@ -10,6 +10,8 @@ defines.h
 # ignore generated executables
 less
 less.exe
+lessecho
+lessecho.exe
 lesskey
 lesskey.exe
 
