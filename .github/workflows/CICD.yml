@@ -21,8 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: 64 }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: 64 }
           # - { name: MacOS, os: macos-latest, compiler: xcode, version: "11.3" }
           - { name: Windows, os: windows-latest, compiler: cl, arch: 64 }
           # - { name: Windows, os: windows-latest, compiler: clang }
@@ -103,6 +103,7 @@ jobs:
           ## create build/work space
           mkdir -p '${{ steps.vars.outputs.STAGING }}'
           mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}'
+          mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin'
       - name: Info
         shell: bash
         run: |
@@ -130,7 +131,10 @@ jobs:
               cp Makefile.win Makefile
             ;;
           esac
-          make
+          make CC="${CC}" CXX="${CXX}"
+          cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
+          # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
+          # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
       # - name: Test
       #   uses: actions-rs/cargo@v1
       #   with:
@@ -141,15 +145,15 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.job.compiler }}.x${{ matrix.job.arch }}
-          path: less*${{ steps.vars.outputs.EXE_suffix }}
+          path: ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}
       - name: Package
         shell: bash
         run: |
           ## package artifact(s)
-          # binary
-          cp 'less${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/'
+          # # binary
+          # cp 'less${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/'
           # `strip` binary (if needed)
-          if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
+          if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/bin/${{ steps.vars.outputs.PKG_BASENAME }}/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
           # README and LICENSE
           # * spell-checker:ignore EADME ICENSE
           (shopt -s nullglob; for f in [R]"EADME"{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
