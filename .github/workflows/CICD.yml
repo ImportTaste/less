@@ -127,14 +127,14 @@ jobs:
         run: |
           case '${{ matrix.job.os }}' in
             ubuntu-*)
-              sudo chmod +x ./configure
-              sudo ./configure
+              sudo chmod a+x ./configure
+              ./configure
             ;;
             windows-*)
               cp Makefile.win Makefile
             ;;
           esac
-          sudo make CC="${CC}" CXX="${CXX}" all
+          make CC="${CC}" CXX="${CXX}" all
           ls -lR
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
