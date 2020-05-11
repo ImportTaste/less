@@ -93,8 +93,7 @@ jobs:
           echo set-output name=DEPLOYABLE::${DEPLOYABLE:-<empty>/false}
           echo ::set-output name=DEPLOYABLE::${DEPLOYABLE}
           # * strip executable?
-          STRIP="strip"
-          case '${{ matrix.job.os }}' in windows-*) STRIP=""; case '${{ matrix.job.compiler }}' in clang) STRIP='llvm-strip' ;; esac; ;; esac;
+          STRIP="strip" ; case '${{ matrix.job.os }}' in windows-*) STRIP='' ;; esac;
           echo set-output name=STRIP::${STRIP:-<empty>/false}
           echo ::set-output name=STRIP::${STRIP}
       - name: Create all needed build/work directories
@@ -114,6 +113,7 @@ jobs:
           echo GITHUB_SHA=${GITHUB_SHA}
           ## tooling info display
           echo "## tooling"
+          if [ ${{ matrix.job.compiler }} = 'cl' ]; then ./VCvars.BAT x${{ matrix.job.arch }} ; fi;
           which cl >/dev/null 2>&1 && (cl 2>&1 | head -1) || true
           which clang >/dev/null 2>&1 && (clang --version | head -1) || true
           which gcc >/dev/null 2>&1 && (gcc --version | head -1) || true
@@ -128,10 +128,11 @@ jobs:
               sudo ./configure
             ;;
             windows-*)
+              if [ ${{ matrix.job.compiler }} = 'cl' ]; then ./VCvars.BAT latest x${{ matrix.job.arch }} ; fi;
               cp Makefile.win Makefile
             ;;
           esac
-          make CC="${CC}" CXX="${CXX}"
+          make CC="${CC}" CXX="${CXX}" all
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
@@ -153,7 +154,7 @@ jobs:
           # # binary
           # cp 'less${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/'
           # `strip` binary (if needed)
-          if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/bin/${{ steps.vars.outputs.PKG_BASENAME }}/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
+          if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
           # README and LICENSE
           # * spell-checker:ignore EADME ICENSE
           (shopt -s nullglob; for f in [R]"EADME"{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
