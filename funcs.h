@@ -1,5 +1,5 @@
 public char * save LESSPARAMS ((constant char *s));
-public VOID_POINTER ecalloc LESSPARAMS ((int count, unsigned int size));
+public VOID_POINTER ecalloc LESSPARAMS ((size_t count, size_t size));
 public char * skipsp LESSPARAMS ((char *s));
 public int sprefix LESSPARAMS ((char *ps, char *s, int uppercase));
 public void quit LESSPARAMS ((int status));
