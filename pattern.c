@@ -157,7 +157,7 @@ compile_pattern(pattern, search_type, comp_pattern)
         cvt_pattern = pattern;
     else
     {
-        cvt_pattern = (char*) ecalloc(1, cvt_length((int)strlen(pattern), CVT_TO_LC));
+        cvt_pattern = (char*) ecalloc(1, cvt_length(strlen(pattern), CVT_TO_LC));
         cvt_text(cvt_pattern, pattern, (int *)NULL, (int *)NULL, CVT_TO_LC);
     }
     result = compile_pattern2(cvt_pattern, search_type, comp_pattern, 1);

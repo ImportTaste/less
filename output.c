@@ -196,7 +196,7 @@ flush(VOID_PARAM)
     {
         *ob = '\0';
         if ((sgr_mode && have_full_ansi) || (ctldisp != OPT_ONPLUS))
-            WIN32textout(obuf, (int)(ob - obuf));
+            WIN32textout(obuf, ob - obuf);
         else
         {
             /*
@@ -247,7 +247,7 @@ flush(VOID_PARAM)
                 if ((int)(ob - p) < 3) {
                     // possible incomplete sequence at end of obuf[] buffer; output any prior chars, copy to beginning of buffer, and return
                     if (p > anchor) {
-                        WIN32textout(anchor, (int)(p-anchor));
+                        WIN32textout(anchor, p-anchor);
                     }
                     slop = (int)(ob - p);
                     /* {{ strcpy args overlap! }} */
@@ -264,7 +264,7 @@ flush(VOID_PARAM)
                          * the last escape sequence,
                          * write them out to the screen.
                          */
-                        WIN32textout(anchor, (int)(p-anchor));
+                        WIN32textout(anchor, p-anchor);
                         anchor = p;
                     }
                     p += 2;  /* Skip the "ESC-[" */
@@ -635,7 +635,7 @@ flush(VOID_PARAM)
             }
 
             /* Output what's left in the buffer.  */
-            WIN32textout(anchor, (int)(ob - anchor));
+            WIN32textout(anchor, ob - anchor);
         }
         ob = obuf;
         return;

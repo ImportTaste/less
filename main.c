@@ -98,8 +98,8 @@ main(argc, argv)
         char *path  = getenv("HOMEPATH");
         if (drive != NULL && path != NULL)
         {
-            char *env = (char *) ecalloc((int)strlen(drive) +
-                    (int)strlen(path) + 6, sizeof(char));
+            char *env = (char *) ecalloc(strlen(drive) +
+                    strlen(path) + 6, sizeof(char));
             strcpy(env, "HOME=");
             strcat(env, drive);
             strcat(env, path);
@@ -299,7 +299,7 @@ save(s)
 {
     char *p;
 
-    p = (char *) ecalloc((int)strlen(s)+1, sizeof(char));
+    p = (char *) ecalloc(strlen(s)+1, sizeof(char));
     strcpy(p, s);
     return (p);
 }

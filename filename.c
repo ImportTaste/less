@@ -65,7 +65,7 @@ shell_unquote(str)
     char *name;
     char *p;
 
-    name = p = (char *) ecalloc((int)strlen(str)+1, sizeof(char));
+    name = p = (char *) ecalloc(strlen(str)+1, sizeof(char));
     if (*str == openquote)
     {
         str++;
@@ -479,7 +479,7 @@ bin_file(f)
     edata = &data[n];
     for (p = data;  p < edata;  )
     {
-        if (utf_mode && !is_utf8_well_formed(p, (int)(edata-data)))
+        if (utf_mode && !is_utf8_well_formed(p, edata-data))
     {
             bin_count++;
             utf_skip_to_lead(&p, edata);
@@ -1039,7 +1039,7 @@ bad_file(filename)
     {
         static char is_a_dir[] = " is a directory";
 
-        m = (char *) ecalloc((int)strlen(filename) + sizeof(is_a_dir),
+        m = (char *) ecalloc(strlen(filename) + sizeof(is_a_dir),
             sizeof(char));
         strcpy(m, filename);
         strcat(m, is_a_dir);
@@ -1059,7 +1059,7 @@ bad_file(filename)
         } else if (!S_ISREG(statbuf.st_mode))
         {
             static char not_reg[] = " is not a regular file (use -f to see it)";
-            m = (char *) ecalloc((int)strlen(filename) + sizeof(not_reg),
+            m = (char *) ecalloc(strlen(filename) + sizeof(not_reg),
                 sizeof(char));
             strcpy(m, filename);
             strcat(m, not_reg);
