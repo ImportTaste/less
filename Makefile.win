@@ -28,10 +28,61 @@ NAME := less ## empty/null => autoset to name of containing folder
 
 #### Start of system configuration section. ####
 
-CC := cl
+# * default to `clang`
+CC := clang
+
+ifeq (,$(filter-out clang gcc,${CC}))
+## `clang` or `gcc`
+CXX := ${CC:gcc=g}++
+LD := ${CXX}
+## -g :: produce debugging information
+## -v :: verbose output (shows command lines used during run)
+## -O<n> :: <n> == [0 .. 3], increasing level of optimization (see <https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html> @@ <https://archive.vn/7YtdI>)
+## -pedantic-errors :: error on use of compiler language extensions
+## -Werror :: warnings treated as errors
+## -Wall :: enable all (usual) warnings
+## -Wextra :: enable extra warnings
+## -Wno-comment :: suppress warnings about trailing comments on directive lines
+## -Wno-deprecated-declarations :: suppress deprecation warnings
+## -Wno-int-to-void-pointer-cast :: suppress cast to void from int warnings; ref: <https://stackoverflow.com/questions/22751762/how-to-make-compiler-not-show-int-to-void-pointer-cast-warnings>
+## -D_CRT_SECURE_NO_WARNINGS :: compiler directive == suppress "unsafe function" compiler warning
+## note: CFLAGS == C flags; CPPFLAGS == C PreProcessor flags; CXXFLAGS := C++ flags; ref: <https://stackoverflow.com/questions/495598/difference-between-cppflags-and-cxxflags-in-gnu-make>
+CFLAGS := -I. -pedantic-errors -Werror -Wall -Wno-comment -Wno-deprecated-declarations -Wno-int-to-void-pointer-cast -D_CRT_SECURE_NO_WARNINGS
+CFLAGS_COMPILE_ONLY := -c
+CFLAGS_DEBUG_true := -DDEBUG -O0 -g
+CFLAGS_DEBUG_false := -DNDEBUG -O3
+CFLAGS_VERBOSE_true := -v
+CFLAGS_v := --version
+CPPFLAGS :=
+## see <https://stackoverflow.com/questions/42545078/clang-version-5-and-lnk4217-warning/42752769#42752769>@@<https://archive.is/bK4Di>
+## see <http://clang-developers.42468.n3.nabble.com/MinGW-Clang-issues-with-static-libstdc-td4056214.html>
+## see <https://clang.llvm.org/docs/LTOVisibility.html>
+## -Xclang <arg> :: pass <arg> to clang compiler
+## -flto-visibility-public-std :: use public LTO visibility for classes in std and stdext namespaces
+CXXFLAGS :=
+CXXFLAGS_clang := -Xclang -flto-visibility-public-std
+## -Xlinker <arg> :: pass <arg> to linker
+## --strip-all :: strip all symbols
+LDFLAGS :=
+LDFLAGS_DEBUG_false := -Xlinker --strip-all
+# LDFLAGS_STATIC_true := -static -static-libgcc -static-libstdc++
+LDFLAGS_STATIC_true := -static
+LDFLAGS_clang_nix := -lstdc++
+LDFLAGS_gcc := -lstdc++
+
+LIBS :=
+
+# ifeq ($(CC),clang)
+# LDFLAGS_dynamic := -Wl,-nodefaultlib:libcmt -lmsvcrt # only works for MSVC targets
+# endif
+# ifeq ($(CC),gcc)
+# # CFLAGS_dynamic := -fpie
+# # LDFLAGS_dynamic := -fpie
+# endif
+endif ## `clang` or `gcc`
 
 ifeq (cl,${CC})
-CXX := cl
+CXX := ${CC}
 LD := link
 ## `cl` (MSVC)
 ## ref: <https://docs.microsoft.com/en-us/cpp/build/reference/compiler-options-listed-by-category> @@ <https://archive.is/PTPDN>
@@ -75,7 +126,18 @@ LDFLAGS := /nologo /subsystem:console /incremental:no /machine:I386
 LDFLAGS_VC6_true := /ignore:4254
 
 LIBS := user32.lib
-endif ## `cl`
+endif ## `cl` (MSVC)
+
+# ifeq (bcc32,${CC})
+# # NOTE: *untested* configuration
+# CXX := ${CC}
+# LD := ilink32
+# CFLAGS := -I. -O2 -w-pro -TWC -P-c -v- -d -f- -ff- -vi
+# CFLAGS_COMPILE_ONLY := -c
+# LDFLAGS := -Tpe -v- -ap -c -x -V4.0 -GF:AGGRESSIVE
+# LIBDIR = $(MAKEDIR)\..\lib
+# LIBS = ${LIBDIR}\import32.lib ${LIBDIR}\cw32.lib
+# endif ## `bcc32` (Borland)
 
 DEFINETYPE := wn
 OBJ_deps := defines.h less.h funcs.h cmd.h
@@ -419,9 +481,10 @@ ${PROJECT_TARGET}: # *default* target (see recipe/rule below)
 
 ####
 
-AUX_EXES := ${BIN_DIR}/lessecho${EXEEXT} ${BIN_DIR}/lesskey${EXEEXT}
+AUX_names := lessecho lesskey
+AUX_targets := $(addprefix ${BIN_DIR}/,$(addsuffix ${EXEEXT},${AUX_names}))
 
-OBJ_files := $(filter-out ${SRC_DIR}/lessecho.c ${SRC_DIR}/lesskey.c ${SRC_DIR}/scrsize.c,${SRC_files})
+OBJ_files := $(filter-out $(addprefix ${SRC_DIR}/,$(addsuffix .c,${AUX_names} scrsize)),${SRC_files})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.c=${OBJ_DIR}/%.${O})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.${O})
 OBJ_files := $(OBJ_files:${SRC_DIR}/%.cxx=${OBJ_DIR}/%.${O})
@@ -438,9 +501,9 @@ $(call %debug_var,OBJ_files)
 
 ####
 
-${AUX_EXES}: %${EXEEXT}: %.${O} version.${O} | ${BIN_DIR}
-	${LD} ${LDFLAGS} "$<" "version.${O}" ${LIBS} /out:"$@"
-	@${ECHO} ${ECHO_SQ}$(call %success_text,made '$@'.)${ECHO_SQ}
+${AUX_targets}: %${EXEEXT}: %.${O} version.${O} ${makefile_abs_path} | ${BIN_DIR}
+	${LD} ${LDFLAGS} "$<" "version.${O}" ${LIBS} ${LD_o}"$@"
+	@${ECHO} ${ECHO_DQ}$(call %success_text,made '$@'.)${ECHO_DQ}
 
 ${OBJ_files}: ${OBJ_deps} | ${OBJ_DIR}
 
@@ -474,14 +537,14 @@ clean: ## Remove build artifacts (including intermediate files)
 	@$(call %rm_fileset,*.${O})
 	@$(call %rm_file,defines.h)
 	@$(call %rm_file,${PROJECT_TARGET})
-	@$(call %rm_files,${AUX_EXES})
+	@$(call %rm_files,${AUX_targets})
 
 ####
 
 .PHONY: all build build-aux compile realclean rebuild vclean veryclean
 all: build build-aux ## Build all project executables
 build: ${PROJECT_TARGET} ## Build project (`less`)
-build-aux: ${AUX_EXES} ## Build auxillary executables (`lessecho` and `lesskey`)
+build-aux: ${AUX_targets} ## Build auxillary executables (`lessecho` and `lesskey`)
 compile: ${OBJ_files} ## Build intermediate files
 realclean: clean
 rebuild: clean build ## Clean and rebuild project
