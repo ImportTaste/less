@@ -15,7 +15,7 @@ on: [push, pull_request]
 
 jobs:
   CICD:
-    name: ${{ matrix.job.name }} (${{ matrix.job.compiler }})
+    name: ${{ matrix.job.name }} (${{ matrix.job.compiler }}, ${{ matrix.job.arch }})
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
@@ -134,7 +134,7 @@ jobs:
               cp Makefile.win Makefile
             ;;
           esac
-          make CC="${CC}" CXX="${CXX}" all
+          sudo make CC="${CC}" CXX="${CXX}" all
           ls -lR
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
