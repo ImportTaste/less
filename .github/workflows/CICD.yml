@@ -113,7 +113,7 @@ jobs:
           echo GITHUB_SHA=${GITHUB_SHA}
           ## tooling info display
           echo "## tooling"
-          if [ ${{ matrix.job.compiler }} = 'cl' ]; then ./VCvars.BAT x${{ matrix.job.arch }} ; fi;
+          if [ ${{ matrix.job.compiler }} = 'cl' ]; then ./VCvars.BAT latest x${{ matrix.job.arch }} ; fi;
           which cl >/dev/null 2>&1 && (cl 2>&1 | head -1) || true
           which clang >/dev/null 2>&1 && (clang --version | head -1) || true
           which gcc >/dev/null 2>&1 && (gcc --version | head -1) || true
