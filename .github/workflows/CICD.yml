@@ -29,27 +29,6 @@ jobs:
           - { name: Windows, os: windows-latest, compiler: gcc, arch: 64 }
     steps:
       - uses: actions/checkout@v1
-      - name: Install/setup prerequisites
-        shell: bash
-        run: |
-          ## install/setup prerequisites
-          case '${{ matrix.job.os }}' in
-            ubuntu-*)
-              sudo apt-get -y update
-              sudo dpkg --add-architecture i386
-              case '${{ matrix.job.compiler }}' in
-                clang) sudo apt-get install -y clang g++-multilib ;;
-                gcc) sudo apt-get install -y g++ g++-multilib ;;
-              esac
-            ;;
-          esac
-          case '${{ matrix.job.compiler }}' in
-            cl) CC=cl ; CXX=cl ;;
-            clang) CC=clang ; CXX=clang++ ;;
-            gcc) CC=gcc ; CXX=g++ ;;
-          esac
-          echo "::set-env name=CC::${CC}"
-          echo "::set-env name=CXX::${CXX}"
       - name: Initialize workflow variables
         id: vars
         shell: bash
@@ -103,6 +82,28 @@ jobs:
           mkdir -p '${{ steps.vars.outputs.STAGING }}'
           mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}'
           mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin'
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Install/setup prerequisites
+        shell: bash
+        run: |
+          ## install/setup prerequisites
+          case '${{ matrix.job.os }}' in
+            ubuntu-*)
+              sudo apt-get -y update
+              sudo dpkg --add-architecture i386
+              case '${{ matrix.job.compiler }}' in
+                clang) sudo apt-get install -y clang g++-multilib ;;
+                gcc) sudo apt-get install -y g++ g++-multilib ;;
+              esac
+            ;;
+          esac
+          case '${{ matrix.job.compiler }}' in
+            cl) CC=cl ; CXX=cl ;;
+            clang) CC=clang ; CXX=clang++ ;;
+            gcc) CC=gcc ; CXX=g++ ;;
+          esac
+          echo "::set-env name=CC::${CC}"
+          echo "::set-env name=CXX::${CXX}"
       - name: Info
         shell: bash
         run: |
@@ -113,7 +114,6 @@ jobs:
           echo GITHUB_SHA=${GITHUB_SHA}
           ## tooling info display
           echo "## tooling"
-          if [ ${{ matrix.job.compiler }} = 'cl' ]; then ./VCvars.BAT latest x${{ matrix.job.arch }} ; fi;
           which cl >/dev/null 2>&1 && (cl 2>&1 | head -1) || true
           which clang >/dev/null 2>&1 && (clang --version | head -1) || true
           which gcc >/dev/null 2>&1 && (gcc --version | head -1) || true
@@ -128,11 +128,11 @@ jobs:
               sudo ./configure
             ;;
             windows-*)
-              if [ ${{ matrix.job.compiler }} = 'cl' ]; then ./VCvars.BAT latest x${{ matrix.job.arch }} ; fi;
               cp Makefile.win Makefile
             ;;
           esac
           make CC="${CC}" CXX="${CXX}" all
+          ls -lR
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
@@ -151,20 +151,24 @@ jobs:
         shell: bash
         run: |
           ## package artifact(s)
+          ls -lR
           # # binary
           # cp 'less${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/'
           # `strip` binary (if needed)
           if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
+          echo "after strip"
           # README and LICENSE
           # * spell-checker:ignore EADME ICENSE
           (shopt -s nullglob; for f in [R]"EADME"{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
           (shopt -s nullglob; for f in [L]"ICENSE"{-*,}{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
+          echo "after README LICENSE"
           # core compressed package
           pushd '${{ steps.vars.outputs.STAGING }}/' >/dev/null
           case '${{ matrix.job.os }}' in
             windows-*) 7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* | tail -2 ;;
             *) tar czf '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* ;;
           esac
+          echo "compression done"
           popd >/dev/null
       - name: Publish
         uses: softprops/action-gh-release@v1
