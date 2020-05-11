@@ -156,7 +156,7 @@ set_pattern(info, pattern, search_type)
     info->text = NULL;
     if (pattern != NULL)
     {
-        info->text = (char *) ecalloc(1, strlen(pattern)+1);
+        info->text = (char *) ecalloc(1, (int)strlen(pattern)+1);
         strcpy(info->text, pattern);
     }
     info->search_type = search_type;
@@ -1022,7 +1022,7 @@ hilite_line(linepos, line, line_len, chpos, sp, ep, cvt_ops)
         else /* end of line */
             break;
     } while (match_pattern(info_compiled(&search_info), search_info.text,
-            searchp, line_end - searchp, &sp, &ep, 1, search_info.search_type));
+            searchp, (int)(line_end - searchp), &sp, &ep, 1, search_info.search_type));
 }
 #endif
 

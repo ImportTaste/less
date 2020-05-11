@@ -909,7 +909,7 @@ getcc_repl(orig, repl, gr_getc, gr_ungetc)
         {
             /* We've received the full orig sequence.
              * Return the repl sequence. */
-            ki = strlen(repl)-1;
+            ki = (int)strlen(repl)-1;
             while (ki > 0)
                 (*gr_ungetc)(repl[ki--]);
             return repl[0];

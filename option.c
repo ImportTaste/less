@@ -599,7 +599,7 @@ optstring(s, p_str, printopt, validchars)
         return (NULL);
     }
     /* Alloc could be more than needed, but not worth trimming. */
-    *p_str = (char *) ecalloc(strlen(s)+1, sizeof(char));
+    *p_str = (char *) ecalloc((int)strlen(s)+1, sizeof(char));
     out = *p_str;
 
     for (p = s;  *p != '\0';  p++)

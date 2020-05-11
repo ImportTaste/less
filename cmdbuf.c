@@ -1091,7 +1091,7 @@ init_compl(VOID_PARAM)
      */
     if (tk_original != NULL)
         free(tk_original);
-    tk_original = (char *) ecalloc(cp-word+1, sizeof(char));
+    tk_original = (char *) ecalloc((int)(cp-word+1), sizeof(char));
     strncpy(tk_original, word, cp-word);
     /*
      * Get the expanded filename.
@@ -1586,7 +1586,7 @@ make_tempname(filename)
     char *filename;
 {
     char lastch;
-    char *tempname = ecalloc(1, strlen(filename)+1);
+    char *tempname = ecalloc(1, (unsigned int)strlen(filename)+1);
     strcpy(tempname, filename);
     lastch = tempname[strlen(tempname)-1];
     tempname[strlen(tempname)-1] = (lastch == 'Q') ? 'Z' : 'Q';

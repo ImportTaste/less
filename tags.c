@@ -124,7 +124,7 @@ maketagent(name, file, linenum, pattern, endline)
     struct tag *tp;
 
     tp = (struct tag *) ecalloc(sizeof(struct tag), 1);
-    tp->tag_file = (char *) ecalloc(strlen(file) + 1, sizeof(char));
+    tp->tag_file = (char *) ecalloc((int)strlen(file) + 1, sizeof(char));
     strcpy(tp->tag_file, file);
     tp->tag_linenum = linenum;
     tp->tag_endline = endline;
@@ -132,7 +132,7 @@ maketagent(name, file, linenum, pattern, endline)
         tp->tag_pattern = NULL;
     else
     {
-        tp->tag_pattern = (char *) ecalloc(strlen(pattern) + 1, sizeof(char));
+        tp->tag_pattern = (char *) ecalloc((int)strlen(pattern) + 1, sizeof(char));
         strcpy(tp->tag_pattern, pattern);
     }
     return (tp);
@@ -555,8 +555,8 @@ findgtag(tag, type)
         qtag = shell_quote(tag);
         if (qtag == NULL)
             qtag = tag;
-        command = (char *) ecalloc(strlen(cmd) + strlen(flag) +
-                strlen(qtag) + 5, sizeof(char));
+        command = (char *) ecalloc((int)strlen(cmd) + (int)strlen(flag) +
+                (int)strlen(qtag) + 5, sizeof(char));
         sprintf(command, "%s -x%s %s", cmd, flag, qtag);
         if (qtag != tag)
             free(qtag);
