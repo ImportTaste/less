@@ -43,8 +43,13 @@ jobs:
               esac
             ;;
           esac
-          echo "::set-env name=CC::clang"
-          echo "::set-env name=CXX::clang++"
+          case '${{ matrix.job.compiler }}' in
+            cl) CC=cl ; CXX=cl ;;
+            clang) CC=clang ; CXX=clang++ ;;
+            gcc) CC=gcc ; CXX=g++ ;;
+          esac
+          echo "::set-env name=CC::${CC}"
+          echo "::set-env name=CXX::${CXX}"
       - name: Initialize workflow variables
         id: vars
         shell: bash
@@ -118,6 +123,7 @@ jobs:
         run: |
           case '${{ matrix.job.os }}' in
             ubuntu-*)
+              sudo chmod +x ./configure
               sudo ./configure
             ;;
             windows-*)
