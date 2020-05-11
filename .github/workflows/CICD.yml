@@ -24,7 +24,7 @@ jobs:
           - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64 }
           - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64 }
           # - { name: MacOS, os: macos-latest, compiler: xcode, version: "11.3" }
-          - { name: Windows, os: windows-latest, compiler: cl, arch: x32 }
+          - { name: Windows, os: windows-latest, compiler: cl, arch: x86 }
           - { name: Windows, os: windows-latest, compiler: cl, arch: x64 }
           # - { name: Windows, os: windows-latest, compiler: clang }
           - { name: Windows, os: windows-latest, compiler: gcc, arch: x64 }
@@ -84,7 +84,8 @@ jobs:
           mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}'
           mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin'
       - uses: ilammy/msvc-dev-cmd@v1
-        arch: ${{ matrix.job.arch }}
+        with:
+          arch: ${{ matrix.job.arch }}
       - name: Install/setup prerequisites
         shell: bash
         run: |
