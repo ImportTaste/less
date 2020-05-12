@@ -160,7 +160,7 @@ jobs:
               cp Makefile.win Makefile
             ;;
           esac
-          make CC="${CC}" CXX="${CXX}" LD="${LD}" all
+          make CC="${CC}" CXX="${CXX}" LD="${LD}" ARCH="${ARCH_ID}" all
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
