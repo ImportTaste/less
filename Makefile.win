@@ -185,7 +185,7 @@ endif
 
 ####
 
-ESCAPE := ## ANSI escape character
+ESCAPE := $()$()## literal ANSI escape character (required for ANSI color display)
 color_black := $(if $(call %is_truthy,${COLOR}),${ESCAPE}[0;30m,)
 color_blue := $(if $(call %is_truthy,${COLOR}),${ESCAPE}[0;34m,)
 color_cyan := $(if $(call %is_truthy,${COLOR}),${ESCAPE}[0;36m,)
