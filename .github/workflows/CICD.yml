@@ -99,15 +99,20 @@ jobs:
           # package name
           PKG_suffix=".tar.gz" ; case '${{ matrix.job.os }}' in windows-*) PKG_suffix=".zip" ;; esac;
           OS_name=$( echo "${{ matrix.job.os }}" | grep -Eo '^\s*([^-]+)' | tr '[:upper:]' '[:lower:]' )
-          STATIC_suffix_text="$( set -- ${{ matrix.job.static }} dynamic ; echo ${@:1:1} )"
-          PKG_BASENAME="${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-(${OS_name}.${{ matrix.job.compiler }}.${STATIC_suffix_text})-${{ matrix.job.arch }}"
-          PKG_NAME="${PKG_BASENAME}${PKG_suffix}"
+          PKG_OS_name=${OS_name}
+          case "${OS_name}" in macos) PKG_OS_name=mac ;; ubuntu) PKG_OS_name=nix ;; windows) PKG_OS_name=win ;; esac;
+          STATIC_suffix=".dyn" ; if is_truthy '${{ matrix.job.static }}'; then STATIC_suffix=".static"; fi
+          PKG_stem="${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${PKG_OS_name}-${{ matrix.job.arch }}"
+          PKG_basename="${PKG_stem}${STATIC_suffix}.(${{ matrix.job.compiler }})"
+          PKG_name="${PKG_basename}${PKG_suffix}"
+          echo set-output name=PKG_stem::${PKG_stem}
           echo set-output name=PKG_suffix::${PKG_suffix}
-          echo set-output name=PKG_BASENAME::${PKG_BASENAME}
-          echo set-output name=PKG_NAME::${PKG_NAME}
+          echo set-output name=PKG_basename::${PKG_basename}
+          echo set-output name=PKG_name::${PKG_name}
+          echo ::set-output name=PKG_stem::${PKG_stem}
           echo ::set-output name=PKG_suffix::${PKG_suffix}
-          echo ::set-output name=PKG_BASENAME::${PKG_BASENAME}
-          echo ::set-output name=PKG_NAME::${PKG_NAME}
+          echo ::set-output name=PKG_basename::${PKG_basename}
+          echo ::set-output name=PKG_name::${PKG_name}
           # deployable tag? (ie, leading "vM" or "M"; M == version number)
           unset DEPLOYABLE ; if [[ $REF_TAG =~ ^[vV]?[0-9].* ]]; then DEPLOYABLE='true' ; fi
           echo set-output name=DEPLOYABLE::${DEPLOYABLE:-<empty>/false}
@@ -121,8 +126,8 @@ jobs:
         run: |
           ## create build/work space
           mkdir -p '${{ steps.vars.outputs.STAGING }}'
-          mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}'
-          mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin'
+          mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}'
+          mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin'
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ steps.vars.outputs.ARCH_ID }}
@@ -193,9 +198,10 @@ jobs:
             ;;
           esac
           make CC="${CC}" CXX="${CXX}" LD="${LD}" ARCH='${{ steps.vars.outputs.ARCH_ID }}' STATIC='${{ matrix.job.static }}' all
-          cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
-          # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
-          # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
+          cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin/'
+          cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin/'
+          cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin/'
+          case '${{ matrix.job.os }}' in ubuntu-*) strip '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin/'*'${{ steps.vars.outputs.EXE_suffix }}' ;; esac;
       # - name: Test
       #   uses: actions-rs/cargo@v1
       #   with:
@@ -205,28 +211,38 @@ jobs:
       - name: Archive executable artifacts
         uses: actions/upload-artifact@master
         with:
-          name: ${{ steps.vars.outputs.PKG_BASENAME }}
-          path: ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}
+          name: ${{ steps.vars.outputs.PKG_basename }}
+          path: ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}
       - name: Package
         shell: bash
         run: |
           ## package artifact(s)
           # # binary
-          # cp 'less${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/'
+          # cp 'less${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/'
           # `strip` binary (if needed)
-          if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
+          if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
           # README and LICENSE
           ## * spell-checker:ignore EADME ICENSE
-          (shopt -s nullglob; for f in [R]"EADME"{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
-          (shopt -s nullglob; for f in [L]"ICENSE"{-*,}{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
+          (shopt -s nullglob; for f in [R]"EADME"{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/' ; done)
+          (shopt -s nullglob; for f in [L]"ICENSE"{-*,}{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_basename }}/' ; done)
           # core compressed package
           pushd '${{ steps.vars.outputs.STAGING }}/' >/dev/null
+          rm -rf ./publish
+          mkdir ./publish
           case '${{ matrix.job.os }}' in
             windows-*)
-              echo 7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/*
-              7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/*
+              echo 7z -y a '${{ steps.vars.outputs.PKG_name }}' '${{ steps.vars.outputs.PKG_basename }}'/*
+              7z -y a publish/'${{ steps.vars.outputs.PKG_name }}' '${{ steps.vars.outputs.PKG_basename }}'/*
+              if [ '${{ matrix.job.os }}' == 'cl' ] && [ '${{ matrix.job.static }}' == 'static' ]; then
+                cp publish/'${{ steps.vars.outputs.PKG_name }}' publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+              fi
               ;;
-            *) tar czf '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* ;;
+            *)
+              tar czf publish/'${{ steps.vars.outputs.PKG_name }}' '${{ steps.vars.outputs.PKG_basename }}'/*
+              if [ '${{ matrix.job.os }}' == 'clang' ] && [ '${{ matrix.job.static }}' == 'static' ]; then
+                cp publish/'${{ steps.vars.outputs.PKG_name }}' publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+              fi
+              ;;
           esac
           popd >/dev/null
       - name: Publish
@@ -234,6 +250,6 @@ jobs:
         if: steps.vars.outputs.DEPLOYABLE
         with:
           files: |
-            ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_NAME }}
+            ${{ steps.vars.outputs.STAGING }}/publish/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
