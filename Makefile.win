@@ -2,6 +2,8 @@
 # Windows version; MS Visual C/C++
 # make (GNU make) version
 
+# Copyright (C) 2020 ~ Roy Ivy III <rivy.dev@gmail.com>; MIT+Apache-2.0 license
+
 # NOTE: * requires `make` version 4.0+ (minimum needed for correct path functions)
 # NOTE: `make` doesn't handle spaces within file names without gyrations (see <https://stackoverflow.com/questions/9838384/can-gnu-make-handle-filenames-with-spaces>@@<https://archive.is/PYKKq>)
 

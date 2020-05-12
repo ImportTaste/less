@@ -1,5 +1,7 @@
 name: CICD
 
+# Copyright (C) 2020 ~ Roy Ivy III <rivy.dev@gmail.com>; MIT+Apache-2.0 license
+
 # spell-checker:ignore (abbrev/acronyms) CICD CodeCOV MSVC MacOS MinGW ASAN TSAN LLVM UBSAN
 # spell-checker:ignore (env/flags) Ccodegen Coverflow fsanitize CXXFLAGS
 # spell-checker:ignore (jargon) SHAs deps softprops toolchain
