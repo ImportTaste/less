@@ -102,12 +102,16 @@ jobs:
             ;;
           esac
           case '${{ matrix.job.compiler }}' in
-            cl) CC=cl ; CXX=cl ;;
-            clang) CC=clang ; CXX=clang++ ;;
-            gcc) CC=gcc ; CXX=g++ ;;
+            cl) CC=cl ; CXX=cl
+              # fix link path error (o/w '/usr/bin/link' has priority)
+              LD=$(which "${CC}")/../link.exe
+              ;;
+            clang) CC=clang ; CXX=clang++ ; LD=${CXX} ;;
+            gcc) CC=gcc ; CXX=g++ ; LD=${CXX} ;;
           esac
           echo "::set-env name=CC::${CC}"
           echo "::set-env name=CXX::${CXX}"
+          echo "::set-env name=LD::${LD}"
       - name: Info
         shell: bash
         run: |
@@ -118,9 +122,10 @@ jobs:
           echo GITHUB_SHA=${GITHUB_SHA}
           ## tooling info display
           echo "## tooling"
-          which cl >/dev/null 2>&1 && (cl 2>&1 | head -1) || true
-          which clang >/dev/null 2>&1 && (clang --version | head -1) || true
-          which gcc >/dev/null 2>&1 && (gcc --version | head -1) || true
+          which cl 2>/dev/null && (cl 2>&1 | head -1) || true
+          which clang 2>/dev/null && (clang --version | head -1) || true
+          which gcc 2>/dev/null && (gcc --version | head -1) || true
+          which link 2>/dev/null || true
           echo "CC=${CC}"
           echo "CXX=${CXX}"
       - name: Build
@@ -135,7 +140,7 @@ jobs:
               cp Makefile.win Makefile
             ;;
           esac
-          make CC="${CC}" CXX="${CXX}" all
+          make CC="${CC}" CXX="${CXX}" LD="${LD}" all
           ls -lR
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
@@ -149,7 +154,7 @@ jobs:
       - name: Archive executable artifacts
         uses: actions/upload-artifact@master
         with:
-          name: ${{ env.PROJECT_NAME }}-${{ matrix.job.compiler }}.x${{ matrix.job.arch }}
+          name: ${{ steps.vars.outputs.PKG_BASENAME }}
           path: ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}
       - name: Package
         shell: bash
@@ -162,17 +167,19 @@ jobs:
           if [ -n "${{ steps.vars.outputs.STRIP }}" ]; then "${{ steps.vars.outputs.STRIP }}" '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' ; fi
           echo "after strip"
           # README and LICENSE
-          # * spell-checker:ignore EADME ICENSE
+          ## * spell-checker:ignore EADME ICENSE
           (shopt -s nullglob; for f in [R]"EADME"{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
           (shopt -s nullglob; for f in [L]"ICENSE"{-*,}{,.*}; do cp $f '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/' ; done)
-          echo "after README LICENSE"
+          #echo "after README LICENSE"
           # core compressed package
           pushd '${{ steps.vars.outputs.STAGING }}/' >/dev/null
+          ls -lR
           case '${{ matrix.job.os }}' in
             windows-*)
-              echo 7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* | tail -2
+              echo 7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/*
               echo starting 7z compression
-              7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* | tail -2
+              7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* || true
+              echo 7z compression done
               ;;
             *) tar czf '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* ;;
           esac
