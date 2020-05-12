@@ -47,9 +47,11 @@ jobs:
           echo ::set-output name=STAGING::${STAGING}
           # normalize ARCH_ID
           ARCH_ID="${{ matrix.job.arch }}";
-          case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ;; 64 | x64 | x86_64) ARCH_ID=x64 ;; esac;
+          case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ; CONFIG_ARCH_ID="i686" ;; 64 | x64 | x86_64) ARCH_ID=x64 ; CONFIG_ARCH_ID="x86_64" ;; esac;
           echo set-output name=ARCH_ID::${ARCH_ID}
           echo ::set-output name=ARCH_ID::${ARCH_ID}
+          echo set-output name=CONFIG_ARCH_ID::${CONFIG_ARCH_ID}
+          echo ::set-output name=CONFIG_ARCH_ID::${CONFIG_ARCH_ID}
           # determine EXE suffix
           EXE_suffix="" ; case '${{ matrix.job.os }}' in windows-*) EXE_suffix=".exe" ;; esac;
           echo set-output name=EXE_suffix::${EXE_suffix}
@@ -154,7 +156,7 @@ jobs:
           case '${{ matrix.job.os }}' in
             ubuntu-*)
               sudo chmod a+x ./configure
-              ./configure
+              ./configure --host=${CONFIG_ARCH_ID}-unknown-linux-gnu
             ;;
             windows-*)
               cp Makefile.win Makefile
