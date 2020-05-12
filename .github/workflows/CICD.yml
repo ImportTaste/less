@@ -138,6 +138,7 @@ jobs:
             ubuntu-*)
               sudo dpkg --add-architecture i386
               sudo dpkg --add-architecture amd64
+              # note: list of current dpkg architectures held at '/var/lib/dpkg/arch'
               sudo apt-get -y update
               sudo apt-get -y install lib32ncurses5-dev libncurses5-dev gcc-multilib clang
             ;;
@@ -147,7 +148,7 @@ jobs:
           esac
           case '${{ matrix.job.compiler }}' in
             cl) CC=cl ; CXX=cl
-              # fix link path error (o/w '/usr/bin/link' has priority)
+              # repair for link path error (o/w '/usr/bin/link' has priority)
               LD=$(which "${CC}")/../link.exe
               ;;
             clang) CC=clang ; CXX=clang++ ; LD=${CXX} ;;
