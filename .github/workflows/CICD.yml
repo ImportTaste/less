@@ -62,7 +62,10 @@ jobs:
           echo ::set-output name=STAGING::${STAGING}
           # normalize ARCH_ID
           ARCH_ID='${{ matrix.job.arch }}'
-          case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ; CONFIG_ARCH_ID="i686" ; CC_ARCH_ID="32" ;; 64 | x64 | x86_64) ARCH_ID=x64 ; CONFIG_ARCH_ID="x86_64" ; ; CC_ARCH_ID="64" ;; esac;
+          case "${ARCH_ID}" in
+            32 | x32 | x86 | i686) ARCH_ID="x86" ; CONFIG_ARCH_ID="i686" ; CC_ARCH_ID="32" ;;
+            64 | x64 | x86_64) ARCH_ID=x64 ; CONFIG_ARCH_ID="x86_64" ; CC_ARCH_ID="64" ;;
+          esac;
           echo set-output name=ARCH_ID::${ARCH_ID}
           echo ::set-output name=ARCH_ID::${ARCH_ID}
           echo set-output name=CONFIG_ARCH_ID::${CONFIG_ARCH_ID}
@@ -71,7 +74,7 @@ jobs:
           echo ::set-output name=CC_ARCH_ID::${CC_ARCH_ID}
           # handle STATIC
           LDFLAGS_STATIC_true=''
-          if is_truthy '${{ matrix.job.static }}'; then LDFLAGS_STATIC_true='-static'
+          if is_truthy '${{ matrix.job.static }}'; then LDFLAGS_STATIC_true='-static'; fi;
           echo set-output name=LDFLAGS_STATIC_true::${LDFLAGS_STATIC_true}
           echo ::set-output name=LDFLAGS_STATIC_true::${LDFLAGS_STATIC_true}
           # determine EXE suffix
@@ -95,10 +98,10 @@ jobs:
           echo ::set-output name=REF_SHAS::${REF_SHAS}
           # package name
           PKG_suffix=".tar.gz" ; case '${{ matrix.job.os }}' in windows-*) PKG_suffix=".zip" ;; esac;
-          OS_name=$( echo "${{ matrix.job.os }}" | grep -Po '^\s*([^-]+)-' | tr '[:upper:]' '[:lower:]')
-          STATIC_suffix_text="$(if is_truthy '${{ matrix.job.static }}'); then echo 'static'; else echo 'dynamic'; fi;)"
-          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-(${OS_name}.${{ matrix.job.compiler }}.${STATIC_suffix_text})-${{ matrix.job.arch }}
-          PKG_NAME=${PKG_BASENAME}${PKG_suffix}
+          OS_name=$( echo "${{ matrix.job.os }}" | grep -Eo '^\s*([^-]+)' | tr '[:upper:]' '[:lower:]' )
+          STATIC_suffix_text="$( set -- ${{ matrix.job.static }} dynamic ; echo ${@:1:1} )"
+          PKG_BASENAME="${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-(${OS_name}.${{ matrix.job.compiler }}.${STATIC_suffix_text})-${{ matrix.job.arch }}"
+          PKG_NAME="${PKG_BASENAME}${PKG_suffix}"
           echo set-output name=PKG_suffix::${PKG_suffix}
           echo set-output name=PKG_BASENAME::${PKG_BASENAME}
           echo set-output name=PKG_NAME::${PKG_NAME}
@@ -133,7 +136,8 @@ jobs:
           ## install/setup prerequisites
           case '${{ matrix.job.os }}' in
             ubuntu-*)
-              sudo dpkg --add-architecture i386 amd64
+              sudo dpkg --add-architecture i386
+              sudo dpkg --add-architecture amd64
               sudo apt-get -y update
               sudo apt-get -y install lib32ncurses5-dev libncurses5-dev gcc-multilib clang
             ;;
@@ -176,8 +180,8 @@ jobs:
           case '${{ matrix.job.os }}' in
             ubuntu-*)
               sudo chmod a+x ./configure
-              CFLAGS="-g -O2 -m${{ steps.vars.output.CC_ARCH_ID }}"
-              LDFLAGS="-m${{ steps.vars.output.CC_ARCH_ID }} ${{ steps.vars.output.LDFLAGS_STATIC_true }}"
+              CFLAGS="-g -O2 -m${{ steps.vars.outputs.CC_ARCH_ID }}"
+              LDFLAGS="-m${{ steps.vars.outputs.CC_ARCH_ID }} ${{ steps.vars.outputs.LDFLAGS_STATIC_true }}"
               CFLAGS="$(echo "${CFLAGS}" | xargs echo)" ## compress/trim whitespace
               LDFLAGS="$(echo "${LDFLAGS}" | xargs echo)" ## compress/trim whitespace
               ./configure CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"
