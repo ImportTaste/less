@@ -72,7 +72,7 @@ jobs:
           echo ::set-output name=REF_TAG::${REF_TAG}
           echo ::set-output name=REF_SHAS::${REF_SHAS}
           # package name
-          PKG_suffix=".tar.gz" ; case '${{ matrix.job.target }}' in *-pc-windows-*) PKG_suffix=".zip" ;; esac;
+          PKG_suffix=".tar.gz" ; case '${{ matrix.job.os }}' in windows-*) PKG_suffix=".zip" ;; esac;
           OS_name=$( echo "${{ matrix.job.name }}" | tr '[:upper:]' '[:lower:]')
           PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}.${{ matrix.job.compiler }}.${{ matrix.job.arch }}
           PKG_NAME=${PKG_BASENAME}${PKG_suffix}
@@ -194,7 +194,7 @@ jobs:
           case '${{ matrix.job.os }}' in
             windows-*)
               echo 7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/*
-              7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* || true
+              7z -y a '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/*
               ;;
             *) tar czf '${{ steps.vars.outputs.PKG_NAME }}' '${{ steps.vars.outputs.PKG_BASENAME }}'/* ;;
           esac
