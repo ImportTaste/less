@@ -74,7 +74,7 @@ jobs:
           # package name
           PKG_suffix=".tar.gz" ; case '${{ matrix.job.target }}' in *-pc-windows-*) PKG_suffix=".zip" ;; esac;
           OS_name=$( echo "${{ matrix.job.name }}" | tr '[:upper:]' '[:lower:]')
-          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}.${{ matrix.job.compiler }}.${ARCH_ID}
+          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}.${{ matrix.job.compiler }}.${{ matrix.job.arch }}
           PKG_NAME=${PKG_BASENAME}${PKG_suffix}
           echo set-output name=PKG_suffix::${PKG_suffix}
           echo set-output name=PKG_BASENAME::${PKG_BASENAME}
