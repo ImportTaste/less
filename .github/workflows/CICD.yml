@@ -23,9 +23,9 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32 }
+          # - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32 } ## unchanged from "arch: x64"
           - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64 }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32 }
+          # - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32 } ## unchanged from "arch: x64"
           - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64 }
           # - { name: MacOS, os: macos-latest, compiler: xcode, version: "11.3" }
           - { name: Windows, os: windows-latest, compiler: cl, arch: x32 }
