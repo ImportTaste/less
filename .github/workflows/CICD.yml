@@ -23,16 +23,16 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x86 }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32 }
           - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64 }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x86 }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32 }
           - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64 }
           # - { name: MacOS, os: macos-latest, compiler: xcode, version: "11.3" }
-          - { name: Windows, os: windows-latest, compiler: cl, arch: x86 }
+          - { name: Windows, os: windows-latest, compiler: cl, arch: x32 }
           - { name: Windows, os: windows-latest, compiler: cl, arch: x64 }
-          - { name: Windows, os: windows-latest, compiler: clang, arch: x86 }
+          - { name: Windows, os: windows-latest, compiler: clang, arch: x32 }
           - { name: Windows, os: windows-latest, compiler: clang, arch: x64 }
-          - { name: Windows, os: windows-latest, compiler: gcc, arch: x86 }
+          - { name: Windows, os: windows-latest, compiler: gcc, arch: x32 }
           - { name: Windows, os: windows-latest, compiler: gcc, arch: x64 }
     steps:
       - uses: actions/checkout@v1
@@ -45,6 +45,11 @@ jobs:
           STAGING='_staging'
           echo set-output name=STAGING::${STAGING}
           echo ::set-output name=STAGING::${STAGING}
+          # normalize ARCH_ID
+          ARCH_ID="${{ matrix.job.arch }}";
+          case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ;; 64 | x64 | x86_64) ARCH_ID=x64 ;; esac;
+          echo set-output name=ARCH_ID::${ARCH_ID}
+          echo ::set-output name=ARCH_ID::${ARCH_ID}
           # determine EXE suffix
           EXE_suffix="" ; case '${{ matrix.job.os }}' in windows-*) EXE_suffix=".exe" ;; esac;
           echo set-output name=EXE_suffix::${EXE_suffix}
@@ -67,7 +72,7 @@ jobs:
           # package name
           PKG_suffix=".tar.gz" ; case '${{ matrix.job.target }}' in *-pc-windows-*) PKG_suffix=".zip" ;; esac;
           OS_name=$( echo "${{ matrix.job.name }}" | tr '[:upper:]' '[:lower:]')
-          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}.${{ matrix.job.compiler }}.${{ matrix.job.arch }}
+          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}.${{ matrix.job.compiler }}.${ARCH_ID}
           PKG_NAME=${PKG_BASENAME}${PKG_suffix}
           echo set-output name=PKG_suffix::${PKG_suffix}
           echo set-output name=PKG_BASENAME::${PKG_BASENAME}
@@ -92,7 +97,7 @@ jobs:
           mkdir -p '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin'
       - uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: ${{ matrix.job.arch }}
+          arch: ${{ steps.vars.outputs.ARCH_ID }}
       # ref: <https://github.com/actions/virtual-environments/issues/104#issuecomment-596259045>@@<http://archive.is/orSp7>
       - name: Install LLVM
         run: choco install -y llvm
