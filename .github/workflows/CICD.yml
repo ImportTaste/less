@@ -115,6 +115,9 @@ jobs:
                 gcc) sudo apt-get install -y g++ g++-multilib ;;
               esac
             ;;
+            windows-*)
+              case '${{ matrix.job.compiler }}' in clang) echo "::add-path::C:/Program Files/LLVM/bin" ;; esac;
+            ;;
           esac
           case '${{ matrix.job.compiler }}' in
             cl) CC=cl ; CXX=cl
@@ -131,6 +134,8 @@ jobs:
         shell: bash
         run: |
           # Info
+          ## environment
+          echo PATH=${PATH}
           ## commit info
           echo "## commit"
           echo GITHUB_REF=${GITHUB_REF}
