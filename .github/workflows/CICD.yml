@@ -32,7 +32,7 @@ jobs:
           - { name: Windows, os: windows-latest, compiler: cl, arch: x64 }
           - { name: Windows, os: windows-latest, compiler: clang, arch: x32 }
           - { name: Windows, os: windows-latest, compiler: clang, arch: x64 }
-          - { name: Windows, os: windows-latest, compiler: gcc, arch: x32 }
+          # - { name: Windows, os: windows-latest, compiler: gcc, arch: x32 } ## unavailable
           - { name: Windows, os: windows-latest, compiler: gcc, arch: x64 }
     steps:
       - uses: actions/checkout@v1
