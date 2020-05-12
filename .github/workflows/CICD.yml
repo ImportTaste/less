@@ -5,9 +5,12 @@ name: CICD
 # spell-checker:ignore (abbrev/acronyms) CICD CodeCOV MSVC MacOS MinGW ASAN TSAN LLVM UBSAN
 # spell-checker:ignore (env/flags) Ccodegen Coverflow fsanitize CXXFLAGS
 # spell-checker:ignore (jargon) SHAs deps softprops toolchain
-# spell-checker:ignore (names) Peltoche rivy Xenial Bionic Bionic's
-# spell-checker:ignore (shell/tools) choco clippy cmake ctest dmake dpkg esac fakeroot gmake grcov halium lcov libssl mkdir popd printf pushd rustc rustfmt rustup shopt xargs xcode valgrind libtsan
+# spell-checker:ignore (names) Bionic Bionic's Peltoche Xenial ilammy rivy
+# spell-checker:ignore (shell/tools) choco clippy cmake chmod ctest dmake dpkg esac fakeroot gmake grcov halium lcov libssl mkdir popd printf pushd rustc rustfmt rustup shopt xargs xcode valgrind libtsan
 # spell-checker:ignore (misc) alnum gnueabihf issuecomment maint nullglob onexitbegin onexitend uutils libc multilib
+
+# spell-checker:ignore () lessecho lesskey
+
 
 env:
   PROJECT_NAME: less
