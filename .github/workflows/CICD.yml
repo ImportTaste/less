@@ -160,8 +160,9 @@ jobs:
         shell: bash
         run: |
           # Info
-          ## environment
-          echo PATH=${PATH}
+          ### environment
+          # echo "## environment"
+          # echo PATH=${PATH}
           ## commit info
           echo "## commit"
           echo GITHUB_REF=${GITHUB_REF}
