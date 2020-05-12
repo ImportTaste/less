@@ -101,7 +101,7 @@ jobs:
       # ref: <https://github.com/actions/virtual-environments/issues/104#issuecomment-596259045>@@<http://archive.is/orSp7>
       - name: Install LLVM
         run: choco install -y llvm
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.job.compiler == 'clang'
       - name: Install/setup prerequisites
         shell: bash
         run: |
@@ -161,7 +161,6 @@ jobs:
             ;;
           esac
           make CC="${CC}" CXX="${CXX}" LD="${LD}" all
-          ls -lR
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
