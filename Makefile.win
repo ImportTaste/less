@@ -128,7 +128,7 @@ CFLAGS_DEBUG_false_STATIC_true := /MT ## release + static
 CFLAGS_VERBOSE_true := $()
 CPPFLAGS := $()
 CXXFLAGS := $()
-LDFLAGS := /nologo /subsystem:console /incremental:no
+LDFLAGS := /nologo /subsystem:console## /incremental:no
 LDFLAGS_ARCH_32 := /machine:I386
 # VC6-specific flags
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
