@@ -463,7 +463,7 @@ LDFLAGS := $(strip ${LDFLAGS})
 ####
 
 BUILD_DIR ?= \#build
-CONFIG	  ?= $(if $(call %is_truthy,${DEBUG}),debug,release)
+CONFIG    ?= $(if $(call %is_truthy,${DEBUG}),debug,release)
 
 SRC_DIR := .
 OUT_DIR := .
@@ -593,6 +593,6 @@ ${OUT_obj}/%.${O}: ${SRC_DIR}/%.cpp ${makefile_abs_path} | ${OUT_obj}
 
 ${OUT_obj}/%.${O}: ${SRC_DIR}/%.cxx ${makefile_abs_path} | ${OUT_obj}
 	${CXX} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CXXFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
-#or	${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
+#or ${CC} ${CFLAGS_COMPILE_ONLY} ${CPPFLAGS} ${CFLAGS} "$<" ${CC_o}"$@"
 
 $(foreach dir,${out_dirs_for_rules},$(eval $(call @mkdir_rule,${dir})))
