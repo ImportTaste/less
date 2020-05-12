@@ -2,15 +2,14 @@ name: CICD
 
 # Copyright (C) 2020 ~ Roy Ivy III <rivy.dev@gmail.com>; MIT+Apache-2.0 license
 
-# spell-checker:ignore (abbrev/acronyms) CICD CodeCOV MSVC MacOS MinGW ASAN TSAN LLVM UBSAN
-# spell-checker:ignore (env/flags) Ccodegen Coverflow fsanitize CXXFLAGS
-# spell-checker:ignore (jargon) SHAs deps softprops toolchain
+# spell-checker:ignore (abbrev/acronyms) ASAN CICD CodeCOV LLVM MSVC MacOS MinGW TSAN UBSAN
+# spell-checker:ignore (env/flags) CFLAGS CXXFLAGS LDFLAGS Ccodegen Coverflow fsanitize
+# spell-checker:ignore (jargon) SHAs deps falsey softprops toolchain truthy
 # spell-checker:ignore (names) Bionic Bionic's Peltoche Xenial ilammy rivy
-# spell-checker:ignore (shell/tools) choco clippy cmake chmod ctest dmake dpkg esac fakeroot gmake grcov halium lcov libssl mkdir popd printf pushd rustc rustfmt rustup shopt xargs xcode valgrind libtsan
-# spell-checker:ignore (misc) alnum gnueabihf issuecomment maint nullglob onexitbegin onexitend uutils libc multilib
+# spell-checker:ignore (shell/tools) chmod choco clippy cmake ctest dmake dpkg esac fakeroot gmake grcov halium lcov libssl libtsan mkdir popd printf pushd rustc rustfmt rustup shopt valgrind xargs xcode
+# spell-checker:ignore (misc) alnum gnueabihf issuecomment libc libncurses maint multilib ncurses nullglob onexitbegin onexitend uutils
 
 # spell-checker:ignore () lessecho lesskey
-
 
 env:
   PROJECT_NAME: less
@@ -20,16 +19,20 @@ on: [push, pull_request]
 
 jobs:
   CICD:
-    name: ${{ matrix.job.name }} (${{ matrix.job.compiler }}, ${{ matrix.job.arch }})
+    name: ${{ matrix.job.name }} (${{ join([ ${{ matrix.job.compiler }}, ${{ matrix.job.arch }}, , ${{ matrix.job.static }}] }})
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
         job:
-          # - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32 } ## unchanged from "arch: x64"
+          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32 }
           - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64 }
-          # - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32 } ## unchanged from "arch: x64"
+          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32 }
           - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64 }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32, static: static }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64, static: static }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32, static: static }
+          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64, static: static }
           # - { name: MacOS, os: macos-latest, compiler: xcode, version: "11.3" }
           - { name: Windows, os: windows-latest, compiler: cl, arch: x32 }
           - { name: Windows, os: windows-latest, compiler: cl, arch: x64 }
@@ -37,6 +40,12 @@ jobs:
           - { name: Windows, os: windows-latest, compiler: clang, arch: x64 }
           # - { name: Windows, os: windows-latest, compiler: gcc, arch: x32 } ## unavailable
           - { name: Windows, os: windows-latest, compiler: gcc, arch: x64 }
+          - { name: Windows, os: windows-latest, compiler: cl, arch: x32, static: static }
+          - { name: Windows, os: windows-latest, compiler: cl, arch: x64, static: static }
+          - { name: Windows, os: windows-latest, compiler: clang, arch: x32, static: static }
+          - { name: Windows, os: windows-latest, compiler: clang, arch: x64, static: static }
+          # - { name: Windows, os: windows-latest, compiler: gcc, arch: x32, static: static } ## unavailable
+          - { name: Windows, os: windows-latest, compiler: gcc, arch: x64, static: static }
     steps:
       - uses: actions/checkout@v1
       - name: Initialize workflow variables
@@ -44,19 +53,29 @@ jobs:
         shell: bash
         run: |
           ## VARs setup
+          falsey='false 0 f off n no'
+          is_truthy() { if [[ -z "$1" ]] || [[ " ${falsey} " == *" ${1,,} "* ]]; then false; else true; fi; }
+          ##as_truthy() { if is_truthy "$1"; then echo 'true'; else echo 'false'; fi; }
           # staging directory
           STAGING='_staging'
           echo set-output name=STAGING::${STAGING}
           echo ::set-output name=STAGING::${STAGING}
           # normalize ARCH_ID
-          ARCH_ID="${{ matrix.job.arch }}";
-          case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ; CONFIG_ARCH_ID="i686" ;; 64 | x64 | x86_64) ARCH_ID=x64 ; CONFIG_ARCH_ID="x86_64" ;; esac;
+          ARCH_ID='${{ matrix.job.arch }}';
+          case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ; CONFIG_ARCH_ID="i686" ; CC_ARCH_ID="32" ;; 64 | x64 | x86_64) ARCH_ID=x64 ; CONFIG_ARCH_ID="x86_64" ; ; CC_ARCH_ID="64" ;; esac;
           echo set-output name=ARCH_ID::${ARCH_ID}
           echo ::set-output name=ARCH_ID::${ARCH_ID}
           echo set-output name=CONFIG_ARCH_ID::${CONFIG_ARCH_ID}
           echo ::set-output name=CONFIG_ARCH_ID::${CONFIG_ARCH_ID}
+          echo set-output name=CC_ARCH_ID::${CC_ARCH_ID}
+          echo ::set-output name=CC_ARCH_ID::${CC_ARCH_ID}
+          # handle STATIC
+          LDFLAGS_STATIC_true=''
+          if is_truthy '${{ matrix.job.static }}'; then LDFLAGS_STATIC_true='-static'
+          echo set-output name=LDFLAGS_STATIC_true::${LDFLAGS_STATIC_true}
+          echo ::set-output name=LDFLAGS_STATIC_true::${LDFLAGS_STATIC_true}
           # determine EXE suffix
-          EXE_suffix="" ; case '${{ matrix.job.os }}' in windows-*) EXE_suffix=".exe" ;; esac;
+          EXE_suffix='' ; case '${{ matrix.job.os }}' in windows-*) EXE_suffix='.exe' ;; esac;
           echo set-output name=EXE_suffix::${EXE_suffix}
           echo ::set-output name=EXE_suffix::${EXE_suffix}
           # parse commit reference info
@@ -77,7 +96,8 @@ jobs:
           # package name
           PKG_suffix=".tar.gz" ; case '${{ matrix.job.os }}' in windows-*) PKG_suffix=".zip" ;; esac;
           OS_name=$( echo "${{ matrix.job.name }}" | tr '[:upper:]' '[:lower:]')
-          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}.${{ matrix.job.compiler }}.${{ matrix.job.arch }}
+          STATIC_suffix_text="$(if is_truthy '${{ matrix.job.static }}'); then echo 'static'; else echo 'dynamic'; fi;)"
+          PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-(${OS_name}.${{ matrix.job.compiler }}.${STATIC_suffix_text})-${{ matrix.job.arch }}
           PKG_NAME=${PKG_BASENAME}${PKG_suffix}
           echo set-output name=PKG_suffix::${PKG_suffix}
           echo set-output name=PKG_BASENAME::${PKG_BASENAME}
@@ -113,12 +133,9 @@ jobs:
           ## install/setup prerequisites
           case '${{ matrix.job.os }}' in
             ubuntu-*)
+              sudo dpkg --add-architecture i386 amd64
               sudo apt-get -y update
-              sudo dpkg --add-architecture i386
-              case '${{ matrix.job.compiler }}' in
-                clang) sudo apt-get install -y clang g++-multilib ;;
-                gcc) sudo apt-get install -y g++ g++-multilib ;;
-              esac
+              sudo apt-get -y install lib32ncurses5-dev libncurses5-dev gcc-multilib clang
             ;;
             windows-*)
               case '${{ matrix.job.compiler }}' in clang) echo "::add-path::C:/Program Files/LLVM/bin" ;; esac;
@@ -159,13 +176,17 @@ jobs:
           case '${{ matrix.job.os }}' in
             ubuntu-*)
               sudo chmod a+x ./configure
-              ./configure --host=${{ steps.vars.outputs.CONFIG_ARCH_ID }}-unknown-linux-gnu
+              CFLAGS="-g -O2 -m${{ steps.vars.output.CC_ARCH_ID }}"
+              LDFLAGS="-m${{ steps.vars.output.CC_ARCH_ID }} ${{ steps.vars.output.LDFLAGS_STATIC_true }}"
+              CFLAGS="$(echo "${CFLAGS}" | xargs echo)" ## compress/trim whitespace
+              LDFLAGS="$(echo "${LDFLAGS}" | xargs echo)" ## compress/trim whitespace
+              ./configure CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"
             ;;
             windows-*)
               cp Makefile.win Makefile
             ;;
           esac
-          make CC="${CC}" CXX="${CXX}" LD="${LD}" ARCH='${{ steps.vars.outputs.ARCH_ID }}' all
+          make CC="${CC}" CXX="${CXX}" LD="${LD}" ARCH='${{ steps.vars.outputs.ARCH_ID }}' STATIC='${{ matrix.job.static }}' all
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
