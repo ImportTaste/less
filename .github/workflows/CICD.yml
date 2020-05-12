@@ -156,13 +156,13 @@ jobs:
           case '${{ matrix.job.os }}' in
             ubuntu-*)
               sudo chmod a+x ./configure
-              ./configure --host=${CONFIG_ARCH_ID}-unknown-linux-gnu
+              ./configure --host=${{ steps.vars.outputs.CONFIG_ARCH_ID }}-unknown-linux-gnu
             ;;
             windows-*)
               cp Makefile.win Makefile
             ;;
           esac
-          make CC="${CC}" CXX="${CXX}" LD="${LD}" ARCH="${ARCH_ID}" all
+          make CC="${CC}" CXX="${CXX}" LD="${LD}" ARCH='${{ steps.vars.outputs.ARCH_ID }}' all
           cp '${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lessecho${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
           # cp 'lesskey${{ steps.vars.outputs.EXE_suffix }}' '${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_BASENAME }}/bin/'
