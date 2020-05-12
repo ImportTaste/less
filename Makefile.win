@@ -35,6 +35,9 @@ ifeq (,$(filter-out clang gcc,${CC}))
 ## `clang` or `gcc`
 CXX := ${CC:gcc=g}++
 LD := ${CXX}
+STRIP_CC_clang_OSID_nix := strip
+STRIP_CC_clang_OSID_win := llvm-strip
+STRIP_CC_gcc := strip
 ## -g :: produce debugging information
 ## -v :: verbose output (shows command lines used during run)
 ## -O<n> :: <n> == [0 .. 3], increasing level of optimization (see <https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html> @@ <https://archive.vn/7YtdI>)
@@ -49,28 +52,32 @@ LD := ${CXX}
 ## note: CFLAGS == C flags; CPPFLAGS == C PreProcessor flags; CXXFLAGS := C++ flags; ref: <https://stackoverflow.com/questions/495598/difference-between-cppflags-and-cxxflags-in-gnu-make>
 CFLAGS := -I. -pedantic-errors -Werror -Wall -Wno-comment -Wno-deprecated-declarations -Wno-int-to-void-pointer-cast -D_CRT_SECURE_NO_WARNINGS
 CFLAGS_COMPILE_ONLY := -c
+CFLAGS_ARCH_32 := -m32
+CFLAGS_ARCH_64 := -m64
 CFLAGS_DEBUG_true := -DDEBUG -O0 -g
 CFLAGS_DEBUG_false := -DNDEBUG -O3
 CFLAGS_VERBOSE_true := -v
 CFLAGS_v := --version
-CPPFLAGS :=
+CPPFLAGS := $()
 ## see <https://stackoverflow.com/questions/42545078/clang-version-5-and-lnk4217-warning/42752769#42752769>@@<https://archive.is/bK4Di>
 ## see <http://clang-developers.42468.n3.nabble.com/MinGW-Clang-issues-with-static-libstdc-td4056214.html>
 ## see <https://clang.llvm.org/docs/LTOVisibility.html>
 ## -Xclang <arg> :: pass <arg> to clang compiler
 ## -flto-visibility-public-std :: use public LTO visibility for classes in std and stdext namespaces
-CXXFLAGS :=
+CXXFLAGS := $()
 CXXFLAGS_clang := -Xclang -flto-visibility-public-std
 ## -Xlinker <arg> :: pass <arg> to linker
 ## --strip-all :: strip all symbols
-LDFLAGS :=
+LDFLAGS := $()
+LDFLAGS_ARCH_32 := -m32
+LDFLAGS_ARCH_64 := -m64
 LDFLAGS_DEBUG_false := -Xlinker --strip-all
 # LDFLAGS_STATIC_true := -static -static-libgcc -static-libstdc++
 LDFLAGS_STATIC_true := -static
 LDFLAGS_clang_nix := -lstdc++
 LDFLAGS_gcc := -lstdc++
 
-LIBS :=
+LIBS := $()
 
 # ifeq ($(CC),clang)
 # LDFLAGS_dynamic := -Wl,-nodefaultlib:libcmt -lmsvcrt # only works for MSVC targets
@@ -84,6 +91,7 @@ endif ## `clang` or `gcc`
 ifeq (cl,${CC})
 CXX := cl
 LD := link
+STRIP := $()
 ## `cl` (MSVC)
 ## ref: <https://docs.microsoft.com/en-us/cpp/build/reference/compiler-options-listed-by-category> @@ <https://archive.is/PTPDN>
 ## /nologo :: startup without logo display
@@ -117,10 +125,11 @@ CFLAGS_DEBUG_true_STATIC_false := /MDd ## debug + dynamic
 CFLAGS_DEBUG_false_STATIC_false := /MD ## release + dynamic
 CFLAGS_DEBUG_true_STATIC_true := /MTd ## debug + static
 CFLAGS_DEBUG_false_STATIC_true := /MT ## release + static
-CFLAGS_VERBOSE_true :=
-CPPFLAGS :=
-CXXFLAGS :=
-LDFLAGS := /nologo /subsystem:console /incremental:no /machine:I386
+CFLAGS_VERBOSE_true := $()
+CPPFLAGS := $()
+CXXFLAGS := $()
+LDFLAGS := /nologo /subsystem:console /incremental:no
+LDFLAGS_ARCH_32 := /machine:I386
 # VC6-specific flags
 ## /ignore:4254 :: suppress "merging sections with different attributes" warning (LNK4254)
 LDFLAGS_VC6_true := /ignore:4254
@@ -299,7 +308,7 @@ COMMA := ,
 BQUOTE := `
 DQUOTE := "
 SQUOTE := '
-NULL :=
+NULL := $()
 SPACE := $() $()
 
 # detect ${CC}
@@ -340,8 +349,8 @@ CC_ARCH_ID := $(if $(filter ${CC_ARCH},32 x32 ${ARCH_i686}),32,64)
 override ARCH := $(or ${ARCH},${CC_ARCH})
 ARCH_ID := $(if $(filter ${ARCH},32 x32 ${ARCH_i686}),32,64)
 OUT_DIR_EXT =.x${ARCH_ID}
-CFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
-LDFLAGS += $(if $(filter cl,${CC}),,-m${ARCH_ID})
+CFLAGS += ${CFLAGS_ARCH_${ARCH_ID}}
+LDFLAGS += ${LDFLAGS_ARCH_${ARCH_ID}}
 CFLAGS := $(strip ${CFLAGS})
 LDFLAGS := $(strip ${LDFLAGS})
 endif # defined ${TARGET}
@@ -385,18 +394,17 @@ FIND       := "${SystemRoot}\System32\find"
 FINDSTR    := "${SystemRoot}\System32\findstr"
 MORE       := "${SystemRoot}\System32\more"
 SORT       := "${SystemRoot}\System32\sort"
-STRIP      := $(or $(if $(filter clang,${CC}),llvm-strip),strip)
 #
 ECHO_NL    := echo.
-ECHO_DQ    :=
-ECHO_SQ    :=
+ECHO_DQ    := $()
+ECHO_SQ    := $()
 else
 OSID_name  ?= $(shell uname | tr '[:upper:]' '[:lower:]')
 OS_PREFIX  := ${OSID_name}.
 CC_e       := -o${SPACE}
 CC_o       := -o${SPACE}
 LD_o       := -o${SPACE}
-EXEEXT     :=
+EXEEXT     := $()
 O          := o
 #
 AWK        := awk
@@ -409,14 +417,16 @@ RM         := rm
 RM_r       := ${RM} -r
 RMDIR      := ${RM} -r
 SORT       := sort
-STRIP      := strip
 #
 ECHO_NL    := echo
 ECHO_DQ    := "
 ECHO_SQ    := '
 endif
 
-# ${STRIP} available? (missing in some distributions)
+# calculate `strip` for ${CC} and ${OSID}
+STRIP := $(or ${STRIP_CC_${CC}_OSID_${OSID}}, ${STRIP_CC_${CC}}, ${STRIP})
+$(call %debug_var,STRIP)
+# * and... ${STRIP} available? (missing in some distributions)
 STRIP_check_flags := --version
 STRIP := $(shell "${STRIP}" ${STRIP_check_flags} >${devnull} 2>&1 && echo ${STRIP})
 $(call %debug_var,STRIP)
