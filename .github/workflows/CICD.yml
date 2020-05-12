@@ -91,6 +91,10 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.job.arch }}
+      # ref: <https://github.com/actions/virtual-environments/issues/104#issuecomment-596259045>@@<>
+      - name: Install LLVM
+        run: choco install -y llvm
+        if: runner.os == 'Windows'
       - name: Install/setup prerequisites
         shell: bash
         run: |
