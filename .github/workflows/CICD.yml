@@ -19,33 +19,33 @@ on: [push, pull_request]
 
 jobs:
   CICD:
-    name: ${{ matrix.job.name }} (${{ join([ ${{ matrix.job.compiler }}, ${{ matrix.job.arch }}, , ${{ matrix.job.static }}] }})
+    name: Build
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
         job:
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32 }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64 }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32 }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64 }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x32, static: static }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: clang, arch: x64, static: static }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x32, static: static }
-          - { name: Ubuntu, os: ubuntu-latest, compiler: gcc, arch: x64, static: static }
-          # - { name: MacOS, os: macos-latest, compiler: xcode, version: "11.3" }
-          - { name: Windows, os: windows-latest, compiler: cl, arch: x32 }
-          - { name: Windows, os: windows-latest, compiler: cl, arch: x64 }
-          - { name: Windows, os: windows-latest, compiler: clang, arch: x32 }
-          - { name: Windows, os: windows-latest, compiler: clang, arch: x64 }
-          # - { name: Windows, os: windows-latest, compiler: gcc, arch: x32 } ## unavailable
-          - { name: Windows, os: windows-latest, compiler: gcc, arch: x64 }
-          - { name: Windows, os: windows-latest, compiler: cl, arch: x32, static: static }
-          - { name: Windows, os: windows-latest, compiler: cl, arch: x64, static: static }
-          - { name: Windows, os: windows-latest, compiler: clang, arch: x32, static: static }
-          - { name: Windows, os: windows-latest, compiler: clang, arch: x64, static: static }
-          # - { name: Windows, os: windows-latest, compiler: gcc, arch: x32, static: static } ## unavailable
-          - { name: Windows, os: windows-latest, compiler: gcc, arch: x64, static: static }
+          - { os: ubuntu-latest, compiler: clang, arch: x32 }
+          - { os: ubuntu-latest, compiler: clang, arch: x64 }
+          - { os: ubuntu-latest, compiler: gcc, arch: x32 }
+          - { os: ubuntu-latest, compiler: gcc, arch: x64 }
+          - { os: ubuntu-latest, compiler: clang, arch: x32, static: static }
+          - { os: ubuntu-latest, compiler: clang, arch: x64, static: static }
+          - { os: ubuntu-latest, compiler: gcc, arch: x32, static: static }
+          - { os: ubuntu-latest, compiler: gcc, arch: x64, static: static }
+          # - { os: macos-latest, compiler: xcode, version: "11.3" }
+          - { os: windows-latest, compiler: cl, arch: x32 }
+          - { os: windows-latest, compiler: cl, arch: x64 }
+          - { os: windows-latest, compiler: clang, arch: x32 }
+          - { os: windows-latest, compiler: clang, arch: x64 }
+          # - { os: windows-latest, compiler: gcc, arch: x32 } ## unavailable
+          - { os: windows-latest, compiler: gcc, arch: x64 }
+          - { os: windows-latest, compiler: cl, arch: x32, static: static }
+          - { os: windows-latest, compiler: cl, arch: x64, static: static }
+          - { os: windows-latest, compiler: clang, arch: x32, static: static }
+          - { os: windows-latest, compiler: clang, arch: x64, static: static }
+          # - { os: windows-latest, compiler: gcc, arch: x32, static: static } ## unavailable
+          - { os: windows-latest, compiler: gcc, arch: x64, static: static }
     steps:
       - uses: actions/checkout@v1
       - name: Initialize workflow variables
@@ -61,7 +61,7 @@ jobs:
           echo set-output name=STAGING::${STAGING}
           echo ::set-output name=STAGING::${STAGING}
           # normalize ARCH_ID
-          ARCH_ID='${{ matrix.job.arch }}';
+          ARCH_ID='${{ matrix.job.arch }}'
           case "${ARCH_ID}" in 32 | x32 | x86 | i686) ARCH_ID="x86" ; CONFIG_ARCH_ID="i686" ; CC_ARCH_ID="32" ;; 64 | x64 | x86_64) ARCH_ID=x64 ; CONFIG_ARCH_ID="x86_64" ; ; CC_ARCH_ID="64" ;; esac;
           echo set-output name=ARCH_ID::${ARCH_ID}
           echo ::set-output name=ARCH_ID::${ARCH_ID}
@@ -95,7 +95,7 @@ jobs:
           echo ::set-output name=REF_SHAS::${REF_SHAS}
           # package name
           PKG_suffix=".tar.gz" ; case '${{ matrix.job.os }}' in windows-*) PKG_suffix=".zip" ;; esac;
-          OS_name=$( echo "${{ matrix.job.name }}" | tr '[:upper:]' '[:lower:]')
+          OS_name=$( echo "${{ matrix.job.os }}" | grep -Po '^\s*([^-]+)-' | tr '[:upper:]' '[:lower:]')
           STATIC_suffix_text="$(if is_truthy '${{ matrix.job.static }}'); then echo 'static'; else echo 'dynamic'; fi;)"
           PKG_BASENAME=${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-(${OS_name}.${{ matrix.job.compiler }}.${STATIC_suffix_text})-${{ matrix.job.arch }}
           PKG_NAME=${PKG_BASENAME}${PKG_suffix}
