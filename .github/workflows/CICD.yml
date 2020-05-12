@@ -93,7 +93,7 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.job.arch }}
-      # ref: <https://github.com/actions/virtual-environments/issues/104#issuecomment-596259045>@@<>
+      # ref: <https://github.com/actions/virtual-environments/issues/104#issuecomment-596259045>@@<http://archive.is/orSp7>
       - name: Install LLVM
         run: choco install -y llvm
         if: runner.os == 'Windows'
