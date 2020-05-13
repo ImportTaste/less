@@ -258,7 +258,7 @@ jobs:
           popd >/dev/null
       - name: Publish
         uses: softprops/action-gh-release@v1
-        if: steps.vars.outputs.DEPLOYABLE && matrix.jobs.static == 'static'
+        if: steps.vars.outputs.DEPLOYABLE && matrix.job.static == 'static'
         with:
           files: |
             ${{ steps.vars.outputs.STAGING }}/publish/*
