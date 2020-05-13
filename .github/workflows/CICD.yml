@@ -101,8 +101,13 @@ jobs:
           OS_name=$( echo "${{ matrix.job.os }}" | grep -Eo '^\s*([^-]+)' | tr '[:upper:]' '[:lower:]' )
           PKG_OS_name=${OS_name}
           case "${OS_name}" in macos) PKG_OS_name=mac ;; ubuntu) PKG_OS_name=nix ;; windows) PKG_OS_name=win ;; esac;
-          STATIC_suffix=".dyn" ; if is_truthy '${{ matrix.job.static }}'; then STATIC_suffix=".static"; fi
-          PKG_stem="${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${PKG_OS_name}-${{ matrix.job.arch }}"
+          if is_truthy '${{ matrix.job.static }}'; then
+            STATIC_suffix=".static"
+            PKG_stem="${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${PKG_OS_name}-${{ matrix.job.arch }}"
+          else
+            STATIC_suffix=".dyn"
+            PKG_stem="${PROJECT_NAME}-${REF_TAG:-$REF_SHAS}-${OS_name}-${{ matrix.job.arch }}"
+          fi
           PKG_basename="${PKG_stem}${STATIC_suffix}.(${{ matrix.job.compiler }})"
           PKG_name="${PKG_basename}${PKG_suffix}"
           echo set-output name=PKG_stem::${PKG_stem}
