@@ -229,28 +229,31 @@ jobs:
           pushd '${{ steps.vars.outputs.STAGING }}/' >/dev/null
           rm -rf ./publish
           mkdir ./publish
+          cd '${{ steps.vars.outputs.PKG_basename }}'
           case '${{ matrix.job.os }}' in
             windows-*)
-              echo 7z -y a '${{ steps.vars.outputs.PKG_name }}' '${{ steps.vars.outputs.PKG_basename }}'/*
-              7z -y a publish/'${{ steps.vars.outputs.PKG_name }}' '${{ steps.vars.outputs.PKG_basename }}'/*
+              7z -y a ../publish/'${{ steps.vars.outputs.PKG_name }}' *
               if [ '${{ matrix.job.arch }}' == 'x32' ] && [ '${{ matrix.job.compiler }}' == 'cl' ] && [ '${{ matrix.job.static }}' == 'static' ]; then
-                cp publish/'${{ steps.vars.outputs.PKG_name }}' publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+                ##cp ../publish/'${{ steps.vars.outputs.PKG_name }}' ../publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+                mv ../publish/'${{ steps.vars.outputs.PKG_name }}' ../publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
               fi
               if [ '${{ matrix.job.arch }}' == 'x64' ] && [ '${{ matrix.job.compiler }}' == 'gcc' ] && [ '${{ matrix.job.static }}' == 'static' ]; then
-                cp publish/'${{ steps.vars.outputs.PKG_name }}' publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+                ##cp ../publish/'${{ steps.vars.outputs.PKG_name }}' ../publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+                mv ../publish/'${{ steps.vars.outputs.PKG_name }}' ../publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
               fi
               ;;
             *)
-              tar czf publish/'${{ steps.vars.outputs.PKG_name }}' '${{ steps.vars.outputs.PKG_basename }}'/*
+              tar czf ../publish/'${{ steps.vars.outputs.PKG_name }}' *
               if [ '${{ matrix.job.compiler }}' == 'clang' ] && [ '${{ matrix.job.static }}' == 'static' ]; then
-                cp publish/'${{ steps.vars.outputs.PKG_name }}' publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+                ##cp ../publish/'${{ steps.vars.outputs.PKG_name }}' ../publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
+                mv ../publish/'${{ steps.vars.outputs.PKG_name }}' ../publish/'${{ steps.vars.outputs.PKG_stem }}${{ steps.vars.outputs.PKG_suffix }}'
               fi
               ;;
           esac
           popd >/dev/null
       - name: Publish
         uses: softprops/action-gh-release@v1
-        if: steps.vars.outputs.DEPLOYABLE
+        if: steps.vars.outputs.DEPLOYABLE && matrix.jobs.static == "static"
         with:
           files: |
             ${{ steps.vars.outputs.STAGING }}/publish/*
